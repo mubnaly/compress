@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: plico-video-compressor
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: starter
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 7317
+      - key: PLICO_HOST
+        value: 0.0.0.0
+      - key: NODE_ENV
+        value: production
+    disk:
+      name: video-storage
+      mountPath: /app/data
+      sizeGB: 10

@@ -1,0 +1,17 @@
+node_modules/
+dist/
+data/cache/
+data/downloads/*
+!data/downloads/.gitkeep
+data/uploads/*
+!data/uploads/.gitkeep
+data/output/*
+!data/output/.gitkeep
+data/test-inputs/*.mp4
+data/test-inputs/*.mkv
+data/test-inputs/*.mov
+data/test-inputs/*.avi
+*.log
+.DS_Store
+.env.local
+.gemini/
