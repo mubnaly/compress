@@ -114,6 +114,10 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Trigger Cloud Webhook (Render / Railway)
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" || true
+          if [ -n "$HOOK" ]; then
+            echo "Triggering cloud deploy webhook..."
+            curl -s -X POST "$HOOK" || true
+          fi
