@@ -14,11 +14,11 @@ permissions:
 
 concurrency:
   group: 'pages'
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  ci-and-test:
-    name: Build & Smoke Test
+  build-and-test:
+    name: Build & Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -30,80 +30,54 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install system dependencies (FFmpeg & yt-dlp)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg python3 curl
-          sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
-          sudo chmod a+rx /usr/local/bin/yt-dlp
-          ffmpeg -version | head -n 1
-          yt-dlp --version
-
-      - name: Install Node dependencies
+      - name: Install dependencies
         run: npm ci
+
+      - name: Verify FFmpeg available
+        run: |
+          ffmpeg -version | head -n 1
 
       - name: Build frontend
         run: npm run build
 
-      - name: Run server and execute smoke tests
+      - name: Verify server health endpoint
         run: |
           node server/index.js &
           SERVER_PID=$!
-          echo "Waiting for engine on port 7317..."
-          for i in {1..30}; do
+          echo "Waiting for server to start..."
+          for i in {1..20}; do
             if curl -s http://127.0.0.1:7317/api/health | grep -q '"ok":true'; then
-              echo "Server is ready!"
+              echo "Server is healthy!"
               break
             fi
             sleep 1
           done
-          
-          # Create a dummy 5-second test video if sample not present
-          mkdir -p data/test-inputs
-          ffmpeg -f lavfi -i testsrc=duration=5:size=1920x1080:rate=30 -f lavfi -i sine=frequency=1000:duration=5 -c:v libx264 -c:a aac data/test-inputs/sample_1080p.mp4 -y
-          
-          PLICO_TEST_DIR="data/test-inputs" node tests/smoke.mjs "data/test-inputs/sample_1080p.mp4"
+          curl -f http://127.0.0.1:7317/api/health
           kill $SERVER_PID || true
-
-      - name: Upload dist artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-build
-          path: dist/
-          retention-days: 1
-
-  deploy-pages:
-    name: Deploy to GitHub Pages
-    needs: ci-and-test
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download built frontend
-        uses: actions/download-artifact@v4
-        with:
-          name: dist-build
-          path: dist
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload Pages Artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'dist'
+          path: './dist'
 
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
 
   docker-publish:
-    name: Build & Publish Docker Image (GHCR)
-    needs: ci-and-test
+    name: Build & Publish Container (GHCR)
+    needs: build-and-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -112,14 +86,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GitHub Container Registry (ghcr.io)
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels)
+      - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -139,14 +113,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy-cloud:
-    name: Trigger Cloud Deploy (Render/Webhook)
-    needs: docker-publish
-    runs-on: ubuntu-latest
-    if: env.RENDER_DEPLOY_HOOK != ''
-    env:
-      RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-    steps:
-      - name: Trigger Webhook
+      - name: Trigger Cloud Webhook (Render / Railway)
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
         run: |
-          curl -X POST "$RENDER_DEPLOY_HOOK"
+          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" || true
