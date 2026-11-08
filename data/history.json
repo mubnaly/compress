@@ -544,6 +544,57 @@
       "width": 320,
       "height": 240,
       "encoder": "libx264"
+    },
+    {
+      "id": "6e6dfa0b-0658-49f7-8a06-4bc3a3a544b4",
+      "timestamp": 1794175979030,
+      "inputPath": "D:\\APP\\video_compressor_demo\\data\\downloads\\انسى Claude ومنتج فيديوهاتك بالأداة المجانية دي_wnBrSC4prZ0.mp4",
+      "outputPath": null,
+      "fileName": "انسى Claude ومنتج فيديوهاتك بالأداة المجانية دي_wnBrSC4prZ0.mp4",
+      "preset": "medium",
+      "status": "already_optimal",
+      "originalSizeBytes": 19167015,
+      "outputSizeBytes": 19167015,
+      "savedBytes": 0,
+      "reductionPercent": 0,
+      "durationSeconds": 504.361,
+      "width": 640,
+      "height": 360,
+      "encoder": "libx264"
+    },
+    {
+      "id": "36b4dd6b-09f1-4cf3-a515-c1abbf9de7bf",
+      "timestamp": 1794176533856,
+      "inputPath": "D:\\APP\\video_compressor_demo\\data\\downloads\\انسى Claude ومنتج فيديوهاتك بالأداة المجانية دي_wnBrSC4prZ0.mp4",
+      "outputPath": null,
+      "fileName": "انسى Claude ومنتج فيديوهاتك بالأداة المجانية دي_wnBrSC4prZ0.mp4",
+      "preset": "medium",
+      "status": "already_optimal",
+      "originalSizeBytes": 19167015,
+      "outputSizeBytes": 19167015,
+      "savedBytes": 0,
+      "reductionPercent": 0,
+      "durationSeconds": 504.361,
+      "width": 640,
+      "height": 360,
+      "encoder": "libx264"
+    },
+    {
+      "id": "11824c24-843d-4694-a875-70d27413a0e8",
+      "timestamp": 1794176665265,
+      "inputPath": "D:\\APP\\video_compressor_demo\\data\\downloads\\انسى Claude ومنتج فيديوهاتك بالأداة المجانية دي_wnBrSC4prZ0.mp4",
+      "outputPath": null,
+      "fileName": "انسى Claude ومنتج فيديوهاتك بالأداة المجانية دي_wnBrSC4prZ0.mp4",
+      "preset": "medium",
+      "status": "already_optimal",
+      "originalSizeBytes": 19167015,
+      "outputSizeBytes": 19167015,
+      "savedBytes": 0,
+      "reductionPercent": 0,
+      "durationSeconds": 504.361,
+      "width": 640,
+      "height": 360,
+      "encoder": "libx264"
     }
   ]
 }

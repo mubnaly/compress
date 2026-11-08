@@ -5,6 +5,7 @@
 A modern, fast video compressor with 100% offline local processing, drag-and-drop file ingestion, audio completion chime, last-modified queue sorting, and an online **720p YouTube download & compression engine**.
 
 🌐 **Live Web UI**: [https://mubnaly.github.io/compress/](https://mubnaly.github.io/compress/)  
+📱 **Android APK**: [Download APK from GitHub Releases](https://github.com/mubnaly/compress/releases)  
 🐳 **Pre-built Container**: `docker run -d -p 7317:7317 -v ./data:/app/data ghcr.io/mubnaly/compress:latest`
 
 Media is encoded directly using FFmpeg with hardware acceleration (NVENC, QSV, AMF, VideoToolbox) when available. Nothing is sent to third parties, and there are zero ads or telemetry.

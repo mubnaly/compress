@@ -1,0 +1,9 @@
+{
+  "appId": "com.plico.compressor",
+  "appName": "Plico Video Compressor",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "cleartext": true
+  }
+}

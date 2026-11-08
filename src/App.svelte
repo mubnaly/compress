@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { app } from './lib/state.svelte';
   import type { View } from './lib/state.svelte';
-  import { api } from './lib/api';
+  import { api, getEngineUrl, setEngineUrl } from './lib/api';
   import type { BrowseEntry } from './lib/api';
   import Library from './views/Library.svelte';
   import Details from './views/Details.svelte';
@@ -10,6 +10,14 @@
   import Compare from './views/Compare.svelte';
   import History from './views/History.svelte';
   import SettingsView from './views/Settings.svelte';
+
+  let remoteEngineInput = $state(getEngineUrl());
+
+  function connectRemoteEngine() {
+    setEngineUrl(remoteEngineInput);
+    app.notify('Engine URL updated. Reconnecting...', 'info');
+    window.location.reload();
+  }
 
   const nav: { id: View; label: string; icon: string }[] = [
     { id: 'library', label: 'Library', icon: '▤' },
@@ -73,7 +81,24 @@
         app.applyTheme(health.settings.theme);
         if (!health.engine.ok) app.bootError = health.engine.error ?? 'FFmpeg is not available on this machine.';
       } catch (err) {
-        app.bootError = err instanceof Error ? err.message : 'Could not reach the local engine.';
+        app.presets = [
+          { id: 'optimal', label: 'Optimal quality', badge: 'Recommended', summary: 'CRF rate control at native resolution.' },
+          { id: 'medium', label: 'Medium quality', badge: 'Balanced', summary: 'Downscales to 720p for a large size cut.' },
+          { id: 'small', label: 'Small size', badge: 'Max savings', summary: 'Downscales to 480p with constrained bitrate.' },
+          { id: 'whatsapp', label: 'WhatsApp', badge: '16 MB cap', summary: 'Fits a 16 MB chat attachment.' },
+          { id: 'gmail', label: 'Gmail', badge: '25 MB cap', summary: 'Fits a 25 MB email attachment.' },
+        ];
+        app.settings = {
+          outputDirectory: '',
+          namingPattern: '{name}_compressed.{ext}',
+          allowSizeIncrease: false,
+          concurrency: 2,
+          defaultCodec: 'h264',
+          defaultPreset: 'medium',
+          hardwareAcceleration: true,
+          theme: 'dark',
+        };
+        app.bootError = 'offline';
       }
     })();
 
@@ -161,11 +186,39 @@
 
     <section class="view">
       {#if app.bootError}
-        <div class="notice danger" style="margin-bottom:16px">
-          {app.bootError}
-          <div class="tiny" style="margin-top:6px">
-            Install FFmpeg and make sure <span class="mono">ffmpeg</span> and <span class="mono">ffprobe</span> are on
-            PATH, then reload this page.
+        <div class="notice" style="margin-bottom:16px;background:var(--panel-2);border-color:var(--accent);display:flex;flex-direction:column;gap:8px">
+          <div class="row between wrap">
+            <span style="font-weight:600;display:flex;align-items:center;gap:6px">
+              🌐 Web Preview Mode (Engine Not Connected)
+            </span>
+            <div class="row" style="gap:8px">
+              <a
+                class="btn btn-sm btn-primary"
+                href="https://github.com/mubnaly/compress/releases"
+                target="_blank"
+                rel="noreferrer"
+              >
+                📱 Download Android APK
+              </a>
+              <button class="btn btn-sm btn-ghost" onclick={() => (app.view = 'settings')}>
+                ⚙ Engine Settings
+              </button>
+            </div>
+          </div>
+          <p class="tiny muted" style="margin:0;line-height:1.5">
+            You are browsing the static web interface on GitHub Pages. To encode videos or download YouTube streams:
+            run the backend locally with <span class="mono">docker run -d -p 7317:7317 ghcr.io/mubnaly/compress</span>, or connect below:
+          </p>
+          <div class="row wrap" style="gap:8px">
+            <input
+              class="input mono"
+              style="max-width:320px;height:32px;font-size:12px;padding:4px 10px"
+              placeholder="e.g. http://localhost:7317"
+              bind:value={remoteEngineInput}
+            />
+            <button class="btn btn-sm btn-primary" onclick={connectRemoteEngine}>
+              Connect Engine
+            </button>
           </div>
         </div>
       {/if}
