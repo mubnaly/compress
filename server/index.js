@@ -362,86 +362,10 @@ async function handleApi(req, res, url) {
   }
 
   if (pathname === '/api/choose-folder' && req.method === 'POST') {
-    if (process.platform === 'win32') {
-      try {
-        const psScript = `
-Add-Type -AssemblyName System.Windows.Forms
-$f = New-Object System.Windows.Forms.FolderBrowserDialog
-$f.Description = 'Select a folder containing videos on your C: drive'
-$f.SelectedPath = 'C:\\'
-$f.ShowNewFolderButton = $true
-if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-  [Console]::Out.Write($f.SelectedPath)
-}
-`;
-        const proc = spawn('powershell.exe', ['-NoProfile', '-STA', '-Command', psScript]);
-        let stdout = '';
-        proc.stdout.on('data', (d) => {
-          stdout += d.toString();
-        });
-        proc.on('close', () => {
-          const selected = stdout.trim();
-          if (selected) {
-            return sendJson(res, 200, { ok: true, path: selected });
-          }
-          return sendJson(res, 200, { ok: false, cancelled: true });
-        });
-        return;
-      } catch (err) {
-        return sendError(res, 500, err);
-      }
-    }
     return sendJson(res, 200, { ok: false, unsupported: true });
   }
 
   if (pathname === '/api/choose-files' && req.method === 'POST') {
-    if (process.platform === 'win32') {
-      try {
-        const psScript = `
-Add-Type -AssemblyName System.Windows.Forms
-$f = New-Object System.Windows.Forms.OpenFileDialog
-$f.Title = 'Select Videos to Compress'
-$f.Multiselect = $true
-$f.InitialDirectory = 'C:\\'
-$f.Filter = 'Video Files|*.mp4;*.mkv;*.mov;*.avi;*.webm;*.flv;*.wmv;*.m4v|All Files|*.*'
-if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-  $f.FileNames | ForEach-Object { [Console]::Out.WriteLine($_) }
-}
-`;
-        const proc = spawn('powershell.exe', ['-NoProfile', '-STA', '-Command', psScript]);
-        let stdout = '';
-        proc.stdout.on('data', (d) => {
-          stdout += d.toString();
-        });
-        proc.on('close', async () => {
-          const lines = stdout
-            .split(/\r?\n/)
-            .map((l) => l.trim())
-            .filter(Boolean);
-          if (lines.length) {
-            const entries = [];
-            for (const p of lines) {
-              try {
-                const stat = await fsp.stat(p);
-                entries.push({
-                  path: p,
-                  name: path.basename(p),
-                  sizeBytes: stat.size,
-                  modifiedAt: stat.mtimeMs,
-                });
-              } catch {
-                /* skip unreadable */
-              }
-            }
-            return sendJson(res, 200, { ok: true, files: entries });
-          }
-          return sendJson(res, 200, { ok: false, cancelled: true });
-        });
-        return;
-      } catch (err) {
-        return sendError(res, 500, err);
-      }
-    }
     return sendJson(res, 200, { ok: false, unsupported: true });
   }
 
@@ -498,8 +422,13 @@ if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
 
       const args = [
         '--no-playlist',
+        '--force-ipv4',
+        '--socket-timeout',
+        '30',
+        '--retries',
+        '5',
         '--extractor-args',
-        'youtube:player_client=ios,android,web',
+        'youtube:player_client=ios,android',
         '-f',
         'bestvideo[height<=720]+bestaudio/best[height<=720]/best',
         '--merge-output-format',
@@ -510,8 +439,8 @@ if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
         outTemplate,
       ];
 
-      const cookieCandidate = process.env.YT_DLP_COOKIES || 'C:\\Users\\mymas\\Downloads\\youtube-dl\\cookies.txt';
-      if (fs.existsSync(cookieCandidate)) {
+      const cookieCandidate = process.env.YT_DLP_COOKIES || (process.platform === 'win32' && fs.existsSync('C:\\Users\\mymas\\Downloads\\youtube-dl\\cookies.txt') ? 'C:\\Users\\mymas\\Downloads\\youtube-dl\\cookies.txt' : null);
+      if (cookieCandidate && fs.existsSync(cookieCandidate)) {
         args.push('--cookies', cookieCandidate);
       }
 

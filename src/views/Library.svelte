@@ -96,33 +96,14 @@
     }
   }
 
-  async function pickNativeFolder() {
-    try {
-      const res = await api.chooseFolder();
-      if (res.ok && res.path) {
-        await load(res.path);
-        app.notify(`Opened folder: ${res.path}`, 'info');
-      } else if (!res.cancelled && res.unsupported) {
-        folderInputEl?.click();
-      }
-    } catch {
-      folderInputEl?.click();
-    }
+  function pickNativeFolder(e?: Event) {
+    e?.stopPropagation();
+    if (folderInputEl) folderInputEl.click();
   }
 
-  async function pickNativeFiles() {
-    try {
-      const res = await api.chooseFiles();
-      if (res.ok && res.files && res.files.length > 0) {
-        app.selected = [...app.selected, ...res.files];
-        app.notify(`Selected ${res.files.length} video(s)!`, 'info');
-        app.view = 'configure';
-      } else if (!res.cancelled && res.unsupported) {
-        fileInputEl?.click();
-      }
-    } catch {
-      fileInputEl?.click();
-    }
+  function pickNativeFiles(e?: Event) {
+    e?.stopPropagation();
+    if (fileInputEl) fileInputEl.click();
   }
 
   async function load(target?: string) {
@@ -223,10 +204,16 @@
 <div
   class="dropzone-card"
   class:active={isDragging}
-  role="region"
+  role="button"
+  tabindex="0"
   aria-label="Dropzone for video files"
+  onclick={() => pickNativeFiles()}
+  onkeydown={(e) => {
+    if (e.key === 'Enter' || e.key === ' ') pickNativeFiles();
+  }}
   ondragover={(e) => {
     e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
     isDragging = true;
   }}
   ondragenter={(e) => {
@@ -239,6 +226,7 @@
   }}
   ondrop={(e) => {
     e.preventDefault();
+    e.stopPropagation();
     isDragging = false;
     if (e.dataTransfer?.files?.length) {
       handleDropFiles(e.dataTransfer.files);
@@ -248,13 +236,23 @@
   <div class="dropzone-icon">🎬</div>
   <div class="dropzone-text">
     <h3>Drag & Drop video files here</h3>
-    <p>Drag any video from your C: partition directly into this box, or select below</p>
+    <p>Drop any video from your C: partition directly into this box, or click to browse</p>
   </div>
   <div class="dropzone-actions">
-    <button class="btn btn-primary btn-sm" onclick={pickNativeFiles} disabled={isDropping}>
+    <button
+      class="btn btn-primary btn-sm"
+      type="button"
+      onclick={(e) => pickNativeFiles(e)}
+      disabled={isDropping}
+    >
       🎥 Select Videos...
     </button>
-    <button class="btn btn-ghost btn-sm" onclick={pickNativeFolder} disabled={isDropping}>
+    <button
+      class="btn btn-ghost btn-sm"
+      type="button"
+      onclick={(e) => pickNativeFolder(e)}
+      disabled={isDropping}
+    >
       📂 Choose Specific Folder...
     </button>
   </div>

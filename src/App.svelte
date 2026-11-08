@@ -29,56 +29,6 @@
   };
 
   let bootTimer: ReturnType<typeof setInterval> | undefined;
-  let windowDragging = $state(false);
-
-  function handleWindowDragOver(event: DragEvent) {
-    event.preventDefault();
-    if (event.dataTransfer?.types.includes('Files')) {
-      windowDragging = true;
-    }
-  }
-
-  function handleWindowDragLeave(event: DragEvent) {
-    if (!event.relatedTarget || (event.relatedTarget as HTMLElement).nodeName === 'HTML') {
-      windowDragging = false;
-    }
-  }
-
-  async function handleWindowDrop(event: DragEvent) {
-    event.preventDefault();
-    windowDragging = false;
-    const files = event.dataTransfer?.files;
-    if (!files || !files.length) return;
-
-    app.notify(`Processing ${files.length} dropped video(s)...`, 'info');
-    try {
-      const addedEntries: BrowseEntry[] = [];
-      for (const file of Array.from(files)) {
-        const filePath = (file as any).path;
-        if (filePath && typeof filePath === 'string') {
-          addedEntries.push({
-            name: file.name,
-            path: filePath,
-            sizeBytes: file.size,
-            modifiedAt: file.lastModified,
-          });
-        } else {
-          const res = await api.upload(file);
-          if (res.ok && res.file) {
-            addedEntries.push(res.file);
-          }
-        }
-      }
-
-      if (addedEntries.length > 0) {
-        app.selected = [...app.selected, ...addedEntries];
-        app.notify(`Loaded ${addedEntries.length} video(s)! Opening configuration...`, 'info');
-        app.view = 'configure';
-      }
-    } catch (err) {
-      app.notify(err instanceof Error ? err.message : 'Could not process dropped video', 'error');
-    }
-  }
 
   function handleShortcut(event: KeyboardEvent) {
     const target = event.target as HTMLElement | null;
@@ -129,16 +79,10 @@
 
     bootTimer = setInterval(() => app.refreshJobs(), 900);
     window.addEventListener('keydown', handleShortcut);
-    window.addEventListener('dragover', handleWindowDragOver);
-    window.addEventListener('dragleave', handleWindowDragLeave);
-    window.addEventListener('drop', handleWindowDrop);
 
     return () => {
       if (bootTimer) clearInterval(bootTimer);
       window.removeEventListener('keydown', handleShortcut);
-      window.removeEventListener('dragover', handleWindowDragOver);
-      window.removeEventListener('dragleave', handleWindowDragLeave);
-      window.removeEventListener('drop', handleWindowDrop);
     };
   });
 
@@ -242,16 +186,6 @@
     </section>
   </div>
 </div>
-
-{#if windowDragging}
-  <div class="drop-overlay">
-    <div class="drop-overlay-box">
-      <span style="font-size:48px">🎬</span>
-      <h2>Drop your video here</h2>
-      <p class="muted">Release to configure and compress</p>
-    </div>
-  </div>
-{/if}
 
 {#if app.toast}
   <div class="toast" class:error={app.toast.kind === 'error'}>{app.toast.message}</div>
