@@ -62,10 +62,10 @@ class AppState {
             // Handle auto-download (for YouTube & online compression)
             if (job.options && (job.options as Record<string, unknown>).autoDownload && !autoDownloaded.has(job.id)) {
               autoDownloaded.add(job.id);
-              const downloadPath = job.result?.outputPath || job.outputPath;
+              const downloadPath = job.result?.outputPath || (job as any).outputPath;
               if (downloadPath) {
                 const link = document.createElement('a');
-                link.href = `/api/media?path=${encodeURIComponent(downloadPath)}&download=1`;
+                link.href = `${api.mediaUrl(downloadPath)}&download=1`;
                 link.download = job.fileName.replace(/\.[^.]+$/, '_720p.mp4');
                 document.body.appendChild(link);
                 link.click();

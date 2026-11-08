@@ -4,6 +4,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 const ENGINE_PORT = Number(process.env.PLICO_PORT ?? 7317);
 
 export default defineConfig({
+  base: './',
   plugins: [svelte()],
   server: {
     port: 5180,

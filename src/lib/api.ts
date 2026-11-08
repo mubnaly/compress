@@ -170,8 +170,25 @@ export interface HistoryResponse {
   totals: { count: number; savedBytes: number; originalBytes: number; compressedBytes: number };
 }
 
+export function getEngineUrl(): string {
+  if (typeof window !== 'undefined') {
+    const custom = localStorage.getItem('plico_engine_url');
+    if (custom) return custom.replace(/\/+$/, '');
+  }
+  return '';
+}
+
+export function setEngineUrl(url: string) {
+  if (typeof window !== 'undefined') {
+    if (url && url.trim()) localStorage.setItem('plico_engine_url', url.trim());
+    else localStorage.removeItem('plico_engine_url');
+  }
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
+  const base = getEngineUrl();
+  const target = base ? `${base}${url}` : url;
+  const response = await fetch(target, {
     ...init,
     headers: {
       'content-type': 'application/json',
@@ -247,7 +264,8 @@ export const api = {
     }),
 
   upload: async (file: File): Promise<{ ok: boolean; file: BrowseEntry; probe: Probe }> => {
-    const res = await fetch(`/api/upload?name=${encodeURIComponent(file.name)}`, {
+    const base = getEngineUrl();
+    const res = await fetch(`${base}/api/upload?name=${encodeURIComponent(file.name)}`, {
       method: 'POST',
       body: file,
     });
@@ -271,7 +289,7 @@ export const api = {
   history: () => request<HistoryResponse & { ok: boolean }>('/api/history'),
   clearHistory: () => request<{ ok: boolean }>('/api/history', { method: 'DELETE' }),
 
-  mediaUrl: (path: string) => `/api/media?path=${encodeURIComponent(path)}`,
+  mediaUrl: (path: string) => `${getEngineUrl()}/api/media?path=${encodeURIComponent(path)}`,
   thumbUrl: (path: string, timeSeconds = 1) =>
-    `/api/thumb?path=${encodeURIComponent(path)}&t=${encodeURIComponent(String(timeSeconds))}`,
+    `${getEngineUrl()}/api/thumb?path=${encodeURIComponent(path)}&t=${encodeURIComponent(String(timeSeconds))}`,
 };

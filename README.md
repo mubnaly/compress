@@ -1,95 +1,102 @@
-# Plico — local video compressor
+# Plico — Offline Video Compressor & Online 720p YouTube Engine
 
-A 100% offline video compressor built from the product specification in
-[`docs/discovery`](docs/discovery). Media is read from disk, encoded on this machine, and written back — nothing is
-uploaded, and there is no advertising or telemetry.
+[![Build, Test & Deploy](https://github.com/mubnaly/compress/actions/workflows/deploy.yml/badge.svg)](https://github.com/mubnaly/compress/actions/workflows/deploy.yml)
 
-The UI is Svelte 5 + TypeScript; the engine is a small Node service that supervises an FFmpeg child process per job and
-streams real progress back to the browser.
+A modern, fast video compressor with 100% offline local processing, drag-and-drop file ingestion, audio completion chime, last-modified queue sorting, and an online **720p YouTube download & compression engine**.
 
-## Requirements
+🌐 **Live Web UI**: [https://mubnaly.github.io/compress/](https://mubnaly.github.io/compress/)  
+🐳 **Pre-built Container**: `docker run -d -p 7317:7317 -v ./data:/app/data ghcr.io/mubnaly/compress:latest`
 
-- Node.js 20+
-- `ffmpeg` and `ffprobe` on `PATH` (set `FFMPEG_PATH` / `FFPROBE_PATH` to override)
+Media is encoded directly using FFmpeg with hardware acceleration (NVENC, QSV, AMF, VideoToolbox) when available. Nothing is sent to third parties, and there are zero ads or telemetry.
 
-## Run
+---
 
+## ⚡ Quick Start
+
+### 1. Run Pre-built Docker Container (Zero Setup)
 ```bash
+docker run -d -p 7317:7317 -v $(pwd)/data:/app/data ghcr.io/mubnaly/compress:latest
+```
+Open [http://localhost:7317](http://localhost:7317) in your browser. All dependencies (Node.js 20, FFmpeg, FFprobe, yt-dlp) are bundled inside.
+
+### 2. Run Locally with Node.js
+```bash
+# Install dependencies
 npm install
-npm run dev        # engine on :7317 + Vite on :5180
-```
 
-Production-style run (single server, no Vite):
+# Run development server (engine on :7317 + Vite on :5180)
+npm run dev
 
-```bash
+# Or build and start production server on :7317
 npm run build
-npm start          # http://127.0.0.1:7317
+npm start
 ```
 
-The engine binds to loopback only. On launch it detects the FFmpeg version and which software/hardware encoders are
-available, and reports them in Settings.
+---
 
-### Shortcuts
+## 🚀 Key Features
 
-| Keys | Action |
-| --- | --- |
-| `Ctrl/Cmd + O` | Jump to the library path bar |
-| `Ctrl/Cmd + Enter` | Start the configured compression |
-| `Space` | Play/pause the source preview |
-| `Esc` | Close the preview dialog |
+| Area | Description |
+|---|---|
+| **YouTube 720p Engine** | Paste any YouTube link. The engine downloads the stream, compresses it to 720p with perceptual CRF rate control, plays a completion chime, and **automatically downloads the file to your device**. |
+| **Drag & Drop + C: Drive** | Drag & drop videos directly from your C: partition or any drive into the dropzone. Native Windows file/folder pickers included. |
+| **Audio Notification** | Plays a synthesized two-tone completion chime via Web Audio API when encoding finishes. |
+| **Queue Management** | Sorted by default with **last modified / newest jobs on top**. Live FPS, ETA, speed multiplier, cancel/retry, and one-click direct download. |
+| **Compression Presets** | Optimal (native CRF), Medium (720p), Small (480p), WhatsApp 16 MB, Gmail 25 MB, custom target size, custom resolution with aspect lock. |
+| **Non-Destructive & Guard** | Never overwrites original files. If compression would increase file size, original is preserved and marked *already optimal*. |
+| **Visual Comparison** | Synchronized side-by-side split slider comparing original vs compressed video with real-time audio and dual playback. |
+| **Multi-Codec & Hardware** | H.264 (default), H.265/HEVC, AV1, VP9 (WebM). Auto-detects NVENC / QSV / AMF hardware acceleration. |
 
-## Features
+---
 
-| Area | What it does |
-| --- | --- |
-| Presets | Optimal (CRF 27 at native resolution), Medium (720p), Small (480p), WhatsApp 16 MB, Gmail 25 MB, custom target size, custom resolution with aspect lock |
-| Size math | `videoKbps = (targetBytes × 8 × 0.95) / duration − audioKbps`, with validation for impossible targets |
-| Audio | Remove track, 0–300 % volume with a soft limiter, bitrate selection (64–256 kbps) |
-| Streams | Probed on import: resolution, rotation, fps, codecs, bitrate, HDR flag, bits-per-pixel heuristic |
-| Edits | Timeline trim (in/out), drag-to-move crop with 16:9 / 9:16 / 1:1 / 4:5 presets, 90°/180°/270° rotation, HDR→SDR tone mapping |
-| Containers | MP4, MKV and WebM (WebM pairs with VP9) |
-| Guard | If an encode would be larger than the original, the original is kept and the job is marked *already optimal* (overridable in Settings) |
-| Preview | Renders a 5/10/15/30 s slice with `-preset ultrafast` and plays it in place |
-| Compare | Synchronised split-slider of original vs. compressed, with dual playback |
-| Queue | Concurrent workers (1–4), live %/fps/speed/ETA, cancel, retry, remove |
-| Files | Custom naming pattern, non-destructive output naming, reveal in Explorer, delete original with confirmation |
-| History | Cumulative space saved and per-run results, stored as local JSON |
-| Library | Folder browsing sorted by date/name/size, multi-select, whole-folder batch queue, recent-savings strip |
+## ☁️ Deployment & Online Hosting
 
-Codecs: H.264 (default), H.265/HEVC, AV1, VP9 (WebM). Hardware encoders (NVENC/QSV/AMF/VideoToolbox/VAAPI) are used
-when detected and enabled.
+Full instructions for hosting on any cloud platform or VPS are in [DEPLOYMENT.md](DEPLOYMENT.md):
 
-## Layout
+- **GitHub Pages**: Automatically deployed via GitHub Actions on every push to `main`.
+- **Render.com**: 1-click deploy using [render.yaml](render.yaml).
+- **Railway.app**: Instant deploy using [railway.json](railway.json).
+- **Docker Compose**: `docker compose up -d`
+- **Linux / VPS**: Run `install-dependencies.sh` then `npm run build && npm start`.
+
+---
+
+## 📁 Repository Structure
 
 ```
-server/            engine + HTTP API (loopback only)
-  index.js         routes: browse, probe, estimate, jobs, preview, thumb, media, settings, history
-  lib/ffmpeg.js    toolchain and encoder detection
-  lib/probe.js     ffprobe JSON → normalised stream metadata
-  lib/presets.js   preset catalogue, bitrate math, validation
-  lib/command.js   FFmpeg argument builder
-  lib/executor.js  child-process supervisor, progress parser, cancellation
-  lib/queue.js     worker pool, already-optimal guard, history writes
-  lib/store.js     settings/history persistence
-src/               Svelte 5 UI (Library, Configure, Queue, Compare, History, Settings)
-data/              local settings, history, caches (gitignored)
-tests/smoke.mjs    end-to-end API check against a running engine
+.github/workflows/   Automated GitHub Actions CI/CD (Test, GitHub Pages, Docker publish)
+server/              Node.js engine & REST API (port 7317, CORS enabled)
+  index.js           API router: /api/youtube, /api/upload, /api/jobs, /api/browse, etc.
+  lib/ffmpeg.js      FFmpeg & hardware encoder auto-detection
+  lib/probe.js       FFprobe JSON stream inspection
+  lib/presets.js     Preset algorithms & bitrate formulas
+  lib/queue.js       Job worker pool & concurrency manager
+  lib/store.js       Local settings & history persistence
+src/                 Svelte 5 + TypeScript reactive UI
+  views/Library.svelte  Video browsing, drag-and-drop, YouTube 720p card
+  views/Queue.svelte    Real-time queue with default last-modified sorting & download
+  views/Compare.svelte  Side-by-side visual difference slider
+  views/Details.svelte  Crop, trim, rotation, bitrate & audio settings
+  lib/sound.ts       Web Audio API completion chime
+Dockerfile           Multi-stage Docker container with Node.js 20, FFmpeg & yt-dlp
+docker-compose.yml   Single command Docker orchestration
+tests/               Smoke and integration test suites
 ```
 
-## Tests
+---
 
-With the engine running on port 7317 and a sample clip available:
+## 🧪 Testing
 
 ```bash
-node tests/smoke.mjs "D:/path/to/sample.mp4"
+# Run complete end-to-end smoke test suite
+node tests/smoke.mjs "data/test-inputs/sample_1080p.mp4"
+
+# Run YouTube endpoint integration test
+node tests/test-youtube.mjs
 ```
 
-It covers probing, previews, estimates and their validation, a real encode, trim/crop/rotation output geometry, MKV
-muxing, the already-optimal guard, a batch run, sorting, settings persistence, history, range streaming, thumbnails and
-error handling.
+---
 
-## Licensing note
+## 📜 Licensing Note
 
-FFmpeg runs strictly as an external child process over pipes; no FFmpeg code is linked into this project. Any FFmpeg
-build containing GPL components (`libx264`, `libx265`) keeps its own license, which is the boundary the architecture
-documents in `docs/discovery/04-ARCHITECTURE-PLAN.md` rely on.
+FFmpeg runs strictly as an external child process over standard pipes; no FFmpeg code is compiled or linked into this project. FFmpeg and its dependencies retain their respective open-source licenses.

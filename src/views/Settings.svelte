@@ -1,10 +1,18 @@
 <script lang="ts">
   import { app } from '../lib/state.svelte';
+  import { getEngineUrl, setEngineUrl } from '../lib/api';
   import type { Settings } from '../lib/api';
 
   let draft = $state<Settings | null>(app.settings ? { ...app.settings } : null);
+  let customEngineUrl = $state(getEngineUrl());
   let saving = $state(false);
   let pickError = $state<string | null>(null);
+
+  function saveEngineConnection() {
+    setEngineUrl(customEngineUrl);
+    app.notify('Engine URL updated. Reconnecting...', 'info');
+    app.boot();
+  }
 
   const codecs = [
     { id: 'h264', label: 'H.264 · most compatible' },
@@ -210,6 +218,29 @@
         {:else}
           <div class="notice danger">{app.engine?.error ?? 'Engine not reachable'}</div>
         {/if}
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3>Online / Remote Engine</h3>
+          <span class="tiny muted">For GitHub Pages or Remote Hosting</span>
+        </div>
+        <div class="stack" style="gap:10px">
+          <p class="tiny muted">
+            When hosted online (e.g. GitHub Pages), connect to your running backend instance (Render, Railway, or local tunnel).
+          </p>
+          <label class="field">
+            <span>Engine Backend URL</span>
+            <input
+              class="input"
+              placeholder="e.g. https://compress.onrender.com (or leave empty)"
+              bind:value={customEngineUrl}
+            />
+          </label>
+          <button class="btn btn-sm btn-ghost" onclick={saveEngineConnection}>
+            Connect / Reload Engine
+          </button>
+        </div>
       </div>
 
       <div class="card">

@@ -176,7 +176,7 @@
           {#if job.status === 'completed' && job.result?.outputPath}
             <a
               class="btn btn-sm btn-primary"
-              href={`/api/media?path=${encodeURIComponent(job.result.outputPath)}&download=1`}
+              href={`${api.mediaUrl(job.result.outputPath)}&download=1`}
               download={job.fileName.replace(/\.[^.]+$/, '_compressed.mp4')}
             >
               ⬇ Download
