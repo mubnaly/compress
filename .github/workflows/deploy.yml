@@ -195,6 +195,7 @@ jobs:
             - **Windows Standalone App**: [`Rasheeq.exe`](https://github.com/mubnaly/rasheeq/releases/download/v0.1.0-release/Rasheeq.exe)
             - **Web UI (Static)**: [https://mubnaly.github.io/rasheeq/](https://mubnaly.github.io/rasheeq/)
             - **Docker Engine**: `docker run -d -p 7317:7317 ghcr.io/${{ github.repository }}:latest`
+          fail_on_unmatched_files: false
           files: |
             artifacts/Rasheeq.apk
             artifacts/Plico-Video-Compressor.apk
@@ -233,6 +234,7 @@ jobs:
         with:
           tag_name: v0.1.0-release
           name: Rasheeq v0.1.0 (رَشيق)
+          fail_on_unmatched_files: false
           files: |
             dist-native/Rasheeq.exe
             dist-native/Plico-Video-Compressor.exe

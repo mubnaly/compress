@@ -10,6 +10,16 @@ import { PRESETS, estimate } from './lib/presets.js';
 import { CompressionQueue, isVideoPath } from './lib/queue.js';
 import { Store, defaultRoots, DATA_DIR } from './lib/store.js';
 import { generatePreview, generateThumbnail, cleanPreviews } from './lib/preview.js';
+import {
+  cutSilenceFromVideo,
+  generateAutoSubtitles,
+  burnSubtitlesToVideo,
+  discoverViralReels,
+  exportViralReel,
+  applySmartMontage,
+  REELS_DIR,
+} from './lib/ai.js';
+import { ensureSoundLibrary, downloadSoundOffline } from './lib/effects.js';
 
 const ROOT = typeof __dirname !== 'undefined'
   ? path.resolve(__dirname, '..')
@@ -196,22 +206,30 @@ function revealInFileManager(target) {
   spawn('xdg-open', [path.dirname(path.resolve(target))], { detached: true, stdio: 'ignore' }).unref();
 }
 
+process.on('uncaughtException', (err) => {
+  console.error('[Rasheeq Engine] Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[Rasheeq Engine] Unhandled Rejection:', reason);
+});
+
 let lastActivity = Date.now();
 let hasEverConnected = false;
 
-// If in desktop app mode, auto-terminate when the window is closed and no heartbeats arrive for 15s
+// If in standalone desktop mode, auto-terminate only if completely idle for 15+ minutes with zero active jobs
 setInterval(() => {
-  if (hasEverConnected && Date.now() - lastActivity > 15000) {
+  if (IS_STANDALONE && hasEverConnected && !queue.hasActiveJobs() && Date.now() - lastActivity > 15 * 60 * 1000) {
+    console.log('[Rasheeq Engine] Inactive for 15 minutes with no active jobs. Exiting.');
     process.exit(0);
   }
-}, 5000);
+}, 30000);
 
 async function handleApi(req, res, url) {
+  lastActivity = Date.now();
   const pathname = url.pathname;
 
   if (pathname === '/api/heartbeat') {
     hasEverConnected = true;
-    lastActivity = Date.now();
     return sendJson(res, 200, { ok: true });
   }
 
@@ -446,6 +464,10 @@ async function handleApi(req, res, url) {
       const args = [
         '--no-playlist',
         '--force-ipv4',
+        '--concurrent-fragments',
+        '5',
+        '--buffer-size',
+        '16M',
         '--socket-timeout',
         '30',
         '--retries',
@@ -547,6 +569,189 @@ async function handleApi(req, res, url) {
     } catch (err) {
       return sendError(res, 500, err);
     }
+  }
+
+  // --- AI STUDIO & EFFECTS ROUTES ---
+
+  if (pathname === '/api/ai/sounds' && req.method === 'GET') {
+    try {
+      const engine = await detectEngine();
+      const sounds = await ensureSoundLibrary(engine.ffmpegPath);
+      return sendJson(res, 200, { ok: true, sounds });
+    } catch (err) {
+      return sendError(res, 500, err);
+    }
+  }
+
+  if (pathname === '/api/ai/sounds/download' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req);
+      if (!body.url) return sendError(res, 400, 'Missing sound URL');
+      const sound = await downloadSoundOffline(body.url, body.name);
+      return sendJson(res, 200, { ok: true, sound });
+    } catch (err) {
+      return sendError(res, 500, err);
+    }
+  }
+
+  if (pathname === '/api/ai/remove-silence' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req);
+      if (!body.path) return sendError(res, 400, 'Missing video path');
+      const inputPath = path.resolve(body.path);
+      const engine = await detectEngine();
+      const probe = await probeFile(engine, inputPath);
+
+      const parsed = path.parse(inputPath);
+      const outDir = path.join(DATA_DIR, 'output');
+      await fsp.mkdir(outDir, { recursive: true });
+      const outputPath = path.join(outDir, `${parsed.name}_no_silence.mp4`);
+
+      const result = await cutSilenceFromVideo({
+        ffmpegPath: engine.ffmpegPath,
+        videoPath: inputPath,
+        outputPath,
+        totalDuration: probe.durationSeconds,
+        noiseThreshold: Number(body.noiseThreshold ?? -30),
+        minDuration: Number(body.minDuration ?? 0.35),
+      });
+
+      return sendJson(res, 200, { ok: true, ...result });
+    } catch (err) {
+      return sendError(res, 500, err);
+    }
+  }
+
+  if (pathname === '/api/ai/transcribe' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req);
+      if (!body.path) return sendError(res, 400, 'Missing video path');
+      const inputPath = path.resolve(body.path);
+      const engine = await detectEngine();
+      const settings = store.getSettings();
+
+      const result = await generateAutoSubtitles({
+        ffmpegPath: engine.ffmpegPath,
+        videoPath: inputPath,
+        apiKey: settings.aiApiKey,
+        model: settings.aiModel,
+        store,
+      });
+
+      return sendJson(res, 200, { ok: true, ...result });
+    } catch (err) {
+      return sendError(res, 500, err);
+    }
+  }
+
+  if (pathname === '/api/ai/burn-subtitles' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req);
+      if (!body.path || !body.srtPath) return sendError(res, 400, 'Missing path or srtPath');
+      const inputPath = path.resolve(body.path);
+      const srtPath = path.resolve(body.srtPath);
+      const engine = await detectEngine();
+
+      const parsed = path.parse(inputPath);
+      const outDir = path.join(DATA_DIR, 'output');
+      await fsp.mkdir(outDir, { recursive: true });
+      const outputPath = path.join(outDir, `${parsed.name}_subtitled.mp4`);
+
+      const result = await burnSubtitlesToVideo({
+        ffmpegPath: engine.ffmpegPath,
+        videoPath: inputPath,
+        srtPath,
+        outputPath,
+      });
+
+      return sendJson(res, 200, { ok: true, ...result });
+    } catch (err) {
+      return sendError(res, 500, err);
+    }
+  }
+
+  if (pathname === '/api/ai/viral-reels' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req);
+      if (!body.path) return sendError(res, 400, 'Missing video path');
+      const inputPath = path.resolve(body.path);
+      const engine = await detectEngine();
+      const settings = store.getSettings();
+
+      const result = await discoverViralReels({
+        ffmpegPath: engine.ffmpegPath,
+        videoPath: inputPath,
+        apiKey: settings.aiApiKey,
+        model: settings.aiModel,
+        store,
+      });
+
+      return sendJson(res, 200, { ok: true, ...result });
+    } catch (err) {
+      return sendError(res, 500, err);
+    }
+  }
+
+  if (pathname === '/api/ai/export-reel' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req);
+      if (!body.path || body.start == null || body.end == null) {
+        return sendError(res, 400, 'Missing path, start, or end');
+      }
+      const inputPath = path.resolve(body.path);
+      const engine = await detectEngine();
+
+      const parsed = path.parse(inputPath);
+      await fsp.mkdir(REELS_DIR, { recursive: true });
+      const safeTitle = (body.title || 'reel').replace(/[<>:"/\\|?*]/g, '_').slice(0, 30);
+      const outputPath = path.join(REELS_DIR, `${parsed.name}_${safeTitle}_${Date.now()}.mp4`);
+
+      const result = await exportViralReel({
+        ffmpegPath: engine.ffmpegPath,
+        videoPath: inputPath,
+        startSeconds: Number(body.start),
+        endSeconds: Number(body.end),
+        outputPath,
+        aspect: body.aspect || '9:16',
+      });
+
+      return sendJson(res, 200, { ok: true, ...result });
+    } catch (err) {
+      return sendError(res, 500, err);
+    }
+  }
+
+  if (pathname === '/api/ai/smart-montage' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req);
+      if (!body.path) return sendError(res, 400, 'Missing video path');
+      const inputPath = path.resolve(body.path);
+      const engine = await detectEngine();
+      const settings = store.getSettings();
+
+      const parsed = path.parse(inputPath);
+      const outDir = path.join(DATA_DIR, 'output');
+      await fsp.mkdir(outDir, { recursive: true });
+      const outputPath = path.join(outDir, `${parsed.name}_smart_montage.mp4`);
+
+      const result = await applySmartMontage({
+        ffmpegPath: engine.ffmpegPath,
+        videoPath: inputPath,
+        outputPath,
+        apiKey: settings.aiApiKey,
+        model: settings.aiModel,
+        store,
+      });
+
+      return sendJson(res, 200, { ok: true, ...result });
+    } catch (err) {
+      return sendError(res, 500, err);
+    }
+  }
+
+  if (pathname === '/api/ai/reset-tokens' && req.method === 'POST') {
+    const tokens = await store.resetAiTokens();
+    return sendJson(res, 200, { ok: true, aiTokensUsed: tokens });
   }
 
   if (pathname === '/api/settings' && req.method === 'GET') {

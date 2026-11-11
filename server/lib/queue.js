@@ -23,10 +23,14 @@ function timestamp() {
 
 async function safeUnlink(filePath) {
   if (!filePath) return;
-  try {
-    await fs.unlink(filePath);
-  } catch {
-    /* nothing to clean up */
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await fs.unlink(filePath);
+      return;
+    } catch (err) {
+      if (err.code === 'ENOENT') return;
+      await new Promise((res) => setTimeout(res, 120));
+    }
   }
 }
 
@@ -156,18 +160,25 @@ export class CompressionQueue {
     return created;
   }
 
+  hasActiveJobs() {
+    return this.jobs.some((job) => job.status === 'running' || job.status === 'queued');
+  }
+
   cancel(id) {
     const job = this.get(id);
     if (!job) return { ok: false, error: 'Job not found' };
     if (TERMINAL.has(job.status)) return { ok: false, error: 'This job already finished' };
-    if (job.status === 'queued') {
-      job.status = 'cancelled';
-      job.finishedAt = timestamp();
-      return { ok: true };
-    }
     job.cancelRequested = true;
+    job.status = 'cancelled';
+    job.finishedAt = timestamp();
     const runner = this.runners.get(job.id);
-    if (runner) runner.cancel();
+    if (runner) {
+      try {
+        runner.cancel();
+      } catch (err) {
+        console.error('Failed to cancel runner:', err);
+      }
+    }
     return { ok: true };
   }
 
@@ -271,7 +282,11 @@ export class CompressionQueue {
       outputPath: tempPath,
       probe: job.probe,
       preset: job.preset,
-      options: { ...job.options, codec },
+      options: {
+        hardwareAcceleration: settings.hardwareAcceleration ?? true,
+        ...job.options,
+        codec,
+      },
       plan,
     });
 

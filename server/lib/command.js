@@ -44,7 +44,7 @@ function qualityArgs(encoder, plan) {
     const maxRate = Math.round(kbps * 1.25);
     switch (family) {
       case 'nvenc':
-        return ['-preset', 'p4', '-rc', 'vbr', '-b:v', `${kbps}k`, '-maxrate', `${maxRate}k`, '-bufsize', `${kbps * 2}k`];
+        return ['-preset', 'p2', '-tune', 'll', '-rc', 'vbr', '-b:v', `${kbps}k`, '-maxrate', `${maxRate}k`, '-bufsize', `${kbps * 2}k`];
       case 'qsv':
         return ['-b:v', `${kbps}k`, '-maxrate', `${maxRate}k`];
       case 'amf':
@@ -81,7 +81,7 @@ function qualityArgs(encoder, plan) {
 
   switch (family) {
     case 'nvenc':
-      return ['-preset', 'p4', '-rc', 'vbr', '-cq', '27', '-b:v', '0'];
+      return ['-preset', 'p2', '-tune', 'll', '-rc', 'vbr', '-cq', '27', '-b:v', '0'];
     case 'qsv':
       return ['-global_quality', '27'];
     case 'amf':
@@ -154,7 +154,7 @@ export function buildFfmpegArgs({ engine, inputPath, outputPath, probe, preset, 
   const dims = presetDimensions(probe, preset, options);
   const encoder = resolveEncoder(engine, codec, Boolean(options.hardwareAcceleration));
 
-  const args = ['-y', '-hide_banner', '-nostdin', '-loglevel', 'error'];
+  const args = ['-y', '-hide_banner', '-nostdin', '-loglevel', 'error', '-threads', '0'];
 
   if (trim.active) args.push('-ss', String(trim.start), '-t', String(trim.duration));
 
@@ -170,7 +170,7 @@ export function buildFfmpegArgs({ engine, inputPath, outputPath, probe, preset, 
   else if (rotation === 180) filters.push('hflip', 'vflip');
   if (probe.isHdr && options.tonemap !== false) filters.push(...TONEMAP_CHAIN);
   if (dims.width !== base.width || dims.height !== base.height) {
-    filters.push(`scale=${dims.width}:${dims.height}:flags=lanczos`);
+    filters.push(`scale=${dims.width}:${dims.height}:flags=bicubic`);
   }
   if (filters.length) args.push('-vf', filters.join(','));
 

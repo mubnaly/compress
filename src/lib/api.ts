@@ -129,6 +129,25 @@ export interface Settings {
   defaultPreset: string;
   hardwareAcceleration: boolean;
   theme: 'system' | 'dark' | 'light';
+  aiApiKey: string;
+  aiModel: string;
+  aiTokensUsed: number;
+}
+
+export interface ViralReel {
+  id: string;
+  start: number;
+  end: number;
+  title: string;
+  hook: string;
+  reason: string;
+  viralityScore: number;
+}
+
+export interface SoundEffect {
+  name: string;
+  file: string;
+  path: string;
 }
 
 export interface BrowseEntry {
@@ -449,6 +468,53 @@ export const api = {
   settings: () => request<{ settings: Settings }>('/api/settings'),
   saveSettings: (settings: Settings) =>
     request<{ settings: Settings }>('/api/settings', { method: 'PUT', body: JSON.stringify({ settings }) }),
+
+  // --- AI STUDIO API ---
+  aiSounds: () => request<{ ok: boolean; sounds: SoundEffect[] }>('/api/ai/sounds'),
+  aiDownloadSound: (url: string, name?: string) =>
+    request<{ ok: boolean; sound: SoundEffect }>('/api/ai/sounds/download', {
+      method: 'POST',
+      body: JSON.stringify({ url, name }),
+    }),
+  aiRemoveSilence: (path: string, noiseThreshold = -30, minDuration = 0.35) =>
+    request<{
+      ok: boolean;
+      silencesDetected: number;
+      speechChunksCount: number;
+      timeSavedSeconds: number;
+      newDurationSeconds: number;
+      outputPath: string;
+      message?: string;
+    }>('/api/ai/remove-silence', {
+      method: 'POST',
+      body: JSON.stringify({ path, noiseThreshold, minDuration }),
+    }),
+  aiTranscribe: (path: string) =>
+    request<{ ok: boolean; srt: string; srtPath: string; tokens: number }>('/api/ai/transcribe', {
+      method: 'POST',
+      body: JSON.stringify({ path }),
+    }),
+  aiBurnSubtitles: (path: string, srtPath: string) =>
+    request<{ ok: boolean; outputPath: string }>('/api/ai/burn-subtitles', {
+      method: 'POST',
+      body: JSON.stringify({ path, srtPath }),
+    }),
+  aiViralReels: (path: string) =>
+    request<{ ok: boolean; reels: ViralReel[]; tokens: number }>('/api/ai/viral-reels', {
+      method: 'POST',
+      body: JSON.stringify({ path }),
+    }),
+  aiExportReel: (payload: { path: string; start: number; end: number; title: string; aspect?: string }) =>
+    request<{ ok: boolean; outputPath: string; duration: number }>('/api/ai/export-reel', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  aiSmartMontage: (path: string) =>
+    request<{ ok: boolean; outputPath: string; effectsApplied: number; markers: any[] }>('/api/ai/smart-montage', {
+      method: 'POST',
+      body: JSON.stringify({ path }),
+    }),
+  aiResetTokens: () => request<{ ok: boolean; aiTokensUsed: number }>('/api/ai/reset-tokens', { method: 'POST' }),
 
   history: () => request<HistoryResponse & { ok: boolean }>('/api/history'),
   clearHistory: () => request<{ ok: boolean }>('/api/history', { method: 'DELETE' }),

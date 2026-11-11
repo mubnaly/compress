@@ -502,6 +502,9 @@
         {formatBytes(app.selected.reduce((sum, entry) => sum + (entry.sizeBytes ?? 0), 0))} total
       </span>
     </div>
-    <button class="btn btn-primary" onclick={configure}>Configure compression →</button>
+    <div class="row" style="gap:8px">
+      <button class="btn btn-ghost" onclick={() => (app.view = 'ai')}>✨ AI Studio</button>
+      <button class="btn btn-primary" onclick={configure}>Configure compression →</button>
+    </div>
   </div>
 {/if}

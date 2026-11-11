@@ -22,8 +22,11 @@ export const DEFAULT_SETTINGS = {
   concurrency: 2,
   defaultCodec: 'h264',
   defaultPreset: 'optimal',
-  hardwareAcceleration: false,
+  hardwareAcceleration: true,
   theme: 'dark',
+  aiApiKey: process.env.GEMINI_API_KEY || process.env.PLICO_AI_KEY || '',
+  aiModel: 'gemini-2.5-flash',
+  aiTokensUsed: 0,
 };
 
 const THEMES = new Set(['system', 'dark', 'light']);
@@ -88,6 +91,19 @@ export class Store {
     return this.getSettings();
   }
 
+  async addAiTokens(count) {
+    if (!Number.isFinite(count) || count <= 0) return this.settings.aiTokensUsed;
+    this.settings.aiTokensUsed = (this.settings.aiTokensUsed || 0) + Math.round(count);
+    await writeJsonAtomic(this.settingsFile, this.settings);
+    return this.settings.aiTokensUsed;
+  }
+
+  async resetAiTokens() {
+    this.settings.aiTokensUsed = 0;
+    await writeJsonAtomic(this.settingsFile, this.settings);
+    return 0;
+  }
+
   getHistory() {
     const entries = [...this.history].sort((a, b) => b.timestamp - a.timestamp);
     const totals = entries.reduce(
@@ -137,5 +153,8 @@ export function sanitizeSettings(input) {
     defaultPreset: typeof merged.defaultPreset === 'string' ? merged.defaultPreset : DEFAULT_SETTINGS.defaultPreset,
     hardwareAcceleration: Boolean(merged.hardwareAcceleration),
     theme: THEMES.has(merged.theme) ? merged.theme : DEFAULT_SETTINGS.theme,
+    aiApiKey: typeof merged.aiApiKey === 'string' ? merged.aiApiKey.trim() : DEFAULT_SETTINGS.aiApiKey,
+    aiModel: typeof merged.aiModel === 'string' && merged.aiModel.trim() ? merged.aiModel.trim() : DEFAULT_SETTINGS.aiModel,
+    aiTokensUsed: Number.isFinite(merged.aiTokensUsed) ? Math.max(0, Math.round(merged.aiTokensUsed)) : 0,
   };
 }

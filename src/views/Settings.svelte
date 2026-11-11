@@ -1,12 +1,37 @@
 <script lang="ts">
   import { app } from '../lib/state.svelte';
-  import { getEngineUrl, setEngineUrl } from '../lib/api';
+  import { api, getEngineUrl, setEngineUrl } from '../lib/api';
   import type { Settings } from '../lib/api';
 
   let draft = $state<Settings | null>(app.settings ? { ...app.settings } : null);
   let customEngineUrl = $state(getEngineUrl());
   let saving = $state(false);
   let pickError = $state<string | null>(null);
+  let showApiKey = $state(false);
+  let resettingTokens = $state(false);
+
+  const DEFAULT_AI_KEY = '';
+
+  function setDefaultAiKey() {
+    if (draft) {
+      draft.aiApiKey = '';
+      app.notify('AI Key cleared', 'info');
+    }
+  }
+
+  async function resetTokenCounter() {
+    if (!confirm('Are you sure you want to reset the AI token counter to zero?')) return;
+    resettingTokens = true;
+    try {
+      const res = await api.aiResetTokens();
+      if (draft) draft.aiTokensUsed = res.aiTokensUsed;
+      app.notify('AI Token counter reset', 'info');
+    } catch (err) {
+      app.notify(err instanceof Error ? err.message : 'Failed to reset tokens', 'error');
+    } finally {
+      resettingTokens = false;
+    }
+  }
 
   function saveEngineConnection() {
     setEngineUrl(customEngineUrl);
@@ -190,6 +215,65 @@
     </div>
 
     <div class="stack">
+      <div class="card" style="border: 1px solid rgba(139, 92, 246, 0.35); background: linear-gradient(180deg, rgba(139, 92, 246, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%);">
+        <div class="card-header">
+          <div class="row align-center" style="gap:8px">
+            <span style="font-size:1.2rem">✨</span>
+            <div>
+              <h3>AI & Smart Editing (Gemini)</h3>
+              <span class="tiny muted">Powering Auto-Captions, Silence Removal & Viral Reels</span>
+            </div>
+          </div>
+          <span class="badge" class:success={Boolean(draft.aiApiKey)} class:danger={!draft.aiApiKey}>
+            {draft.aiApiKey ? 'AI Active' : 'No Key'}
+          </span>
+        </div>
+
+        <div class="stack" style="gap:14px; margin-top:8px">
+          <label class="field">
+            <div class="row between align-center">
+              <span>Gemini API Key</span>
+              <button class="btn btn-xs btn-ghost" type="button" onclick={() => showApiKey = !showApiKey}>
+                {showApiKey ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            {#if showApiKey}
+              <input class="input mono" type="text" bind:value={draft.aiApiKey} placeholder="AIzaSy..." />
+            {:else}
+              <input class="input mono" type="password" bind:value={draft.aiApiKey} placeholder="AIzaSy..." />
+            {/if}
+          </label>
+
+          <div class="row between align-center wrap" style="gap:8px">
+            <label class="field" style="flex:1; min-width:180px">
+              <span>Model</span>
+              <select class="input" bind:value={draft.aiModel}>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Fastest & Best)</option>
+                <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              </select>
+            </label>
+            <button class="btn btn-sm btn-ghost" type="button" onclick={setDefaultAiKey} style="margin-top:20px">
+              Reset Default Key
+            </button>
+          </div>
+
+          <div class="card" style="background: rgba(15, 23, 42, 0.5); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06)">
+            <div class="row between align-center">
+              <div>
+                <span class="tiny muted" style="display:block">Cumulative AI Usage</span>
+                <strong style="font-size: 1.15rem; color: #a78bfa;">
+                  {(draft.aiTokensUsed || 0).toLocaleString()} <span style="font-size: 0.8rem; font-weight: normal; color: var(--muted)">tokens</span>
+                </strong>
+              </div>
+              <button class="btn btn-xs btn-ghost" type="button" onclick={resetTokenCounter} disabled={resettingTokens}>
+                {resettingTokens ? 'Resetting…' : 'Reset Counter'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-header">
           <h3>Engine</h3>

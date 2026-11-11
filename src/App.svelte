@@ -10,6 +10,7 @@
   import Compare from './views/Compare.svelte';
   import History from './views/History.svelte';
   import SettingsView from './views/Settings.svelte';
+  import AiStudio from './views/AiStudio.svelte';
 
   let remoteEngineInput = $state(getEngineUrl());
 
@@ -22,6 +23,7 @@
   const nav: { id: View; label: string; icon: string }[] = [
     { id: 'library', label: 'Library', icon: '▤' },
     { id: 'configure', label: 'Configure', icon: '⚙' },
+    { id: 'ai', label: 'AI Studio', icon: '✨' },
     { id: 'queue', label: 'Queue', icon: '⇣' },
     { id: 'history', label: 'History', icon: '◷' },
     { id: 'settings', label: 'Settings', icon: '≡' },
@@ -30,6 +32,7 @@
   const titles: Record<View, { title: string; sub: string }> = {
     library: { title: 'Library', sub: 'Pick videos from this machine — nothing is uploaded.' },
     configure: { title: 'Configure', sub: 'Choose quality, size targets and audio handling.' },
+    ai: { title: 'AI Studio (ستوديو الذكاء الاصطناعي)', sub: 'Auto-Captions, Silence Removal, Viral Reels & Dynamic SFX.' },
     queue: { title: 'Queue', sub: 'Watch encodes progress and inspect the results.' },
     compare: { title: 'Compare', sub: 'Inspect compression artifacts frame by frame.' },
     history: { title: 'History', sub: 'Everything you have compressed locally.' },
@@ -270,6 +273,8 @@
         <Library />
       {:else if app.view === 'configure'}
         <Details />
+      {:else if app.view === 'ai'}
+        <AiStudio />
       {:else if app.view === 'queue'}
         <QueueView />
       {:else if app.view === 'compare'}

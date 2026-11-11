@@ -2,7 +2,7 @@ import { api } from './api';
 import type { BrowseEntry, EngineInfo, Job, PresetMeta, Settings } from './api';
 import { playCompletionSound } from './sound';
 
-export type View = 'library' | 'configure' | 'queue' | 'compare' | 'history' | 'settings';
+export type View = 'library' | 'configure' | 'queue' | 'compare' | 'history' | 'settings' | 'ai';
 
 export interface Toast {
   message: string;

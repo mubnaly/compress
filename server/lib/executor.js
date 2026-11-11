@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, exec } from 'node:child_process';
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -119,17 +119,25 @@ export function runFfmpeg({ ffmpegPath, args, durationSeconds, onProgress }) {
     if (cancelled) return;
     cancelled = true;
     try {
-      child.kill('SIGTERM');
+      if (process.platform === 'win32' && child.pid) {
+        exec(`taskkill /F /T /PID ${child.pid}`, () => {});
+      } else {
+        child.kill('SIGTERM');
+      }
     } catch {
       /* already exited */
     }
     const force = setTimeout(() => {
       try {
-        child.kill('SIGKILL');
+        if (process.platform === 'win32' && child.pid) {
+          exec(`taskkill /F /T /PID ${child.pid}`, () => {});
+        } else {
+          child.kill('SIGKILL');
+        }
       } catch {
         /* already exited */
       }
-    }, 2500);
+    }, 1500);
     if (typeof force.unref === 'function') force.unref();
   };
 

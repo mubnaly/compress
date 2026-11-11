@@ -7,6 +7,11 @@ data/uploads/*
 !data/uploads/.gitkeep
 data/output/*
 !data/output/.gitkeep
+data/reels/*
+data/effects/*
+data/desktop-profile/
+data/history.json
+data/settings.json
 data/test-inputs/*.mp4
 data/test-inputs/*.mkv
 data/test-inputs/*.mov

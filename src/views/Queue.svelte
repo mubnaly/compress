@@ -17,12 +17,14 @@
   const activeCount = $derived(app.jobs.filter((job) => job.status === 'running' || job.status === 'queued').length);
 
   async function cancel(job: Job) {
+    job.status = 'cancelled';
     try {
       const result = await api.cancelJob(job.id);
       if (!result.ok) throw new Error('Could not cancel this job');
-      await app.refreshJobs();
     } catch (err) {
-      app.notify(err instanceof Error ? err.message : 'Could not cancel', 'error');
+      console.warn('Cancel warning:', err);
+    } finally {
+      await app.refreshJobs().catch(() => {});
     }
   }
 
