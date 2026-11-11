@@ -608,6 +608,61 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+function openAppWindow(port) {
+  if (process.env.NO_OPEN || process.env.PLICO_HEADLESS || process.env.CI) return;
+
+  const url = `http://127.0.0.1:${port}`;
+  let browserPath = null;
+
+  if (process.platform === 'win32') {
+    const candidates = [
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      path.join(process.env.LOCALAPPDATA || '', 'Microsoft\\Edge\\Application\\msedge.exe'),
+      path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
+    ];
+    for (const c of candidates) {
+      if (fs.existsSync(c)) {
+        browserPath = c;
+        break;
+      }
+    }
+  }
+
+  if (browserPath) {
+    const profileDir = path.join(DATA_DIR, 'desktop-profile');
+    try {
+      fs.mkdirSync(profileDir, { recursive: true });
+    } catch {}
+
+    const appProc = spawn(
+      browserPath,
+      [
+        `--app=${url}`,
+        '--window-size=1280,840',
+        '--disable-extensions',
+        '--disable-default-apps',
+        `--user-data-dir=${profileDir}`,
+      ],
+      { detached: false, windowsHide: true }
+    );
+
+    appProc.on('exit', () => {
+      process.exit(0);
+    });
+  } else {
+    if (process.platform === 'win32') {
+      spawn('cmd', ['/c', 'start', url], { windowsHide: true, detached: true }).unref();
+    } else if (process.platform === 'darwin') {
+      spawn('open', [url], { detached: true }).unref();
+    } else {
+      spawn('xdg-open', [url], { detached: true }).unref();
+    }
+  }
+}
+
 async function start() {
   await store.ready;
   queue = new CompressionQueue({ store, getEngine: () => detectEngine() });
@@ -626,6 +681,8 @@ async function start() {
       console.log(`Software encoders: ${Object.entries(engine.softwareEncoders).map(([k, v]) => `${k}=${v ?? 'n/a'}`).join(', ')}`);
       console.log(`Hardware encoders: ${hardware.length ? hardware.join(', ') : 'none detected'}`);
     }
+
+    openAppWindow(PORT);
   });
 }
 

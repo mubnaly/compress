@@ -80,8 +80,25 @@ async function main() {
     { stdio: 'inherit' }
   );
 
+  // 8. Patch PE subsystem to Windows GUI (2) so no black terminal console window appears
+  if (process.platform === 'win32') {
+    try {
+      const buf = await fsp.readFile(outExe);
+      const peOffset = buf.readUInt32LE(0x3c);
+      const subsystemOffset = peOffset + 24 + 68;
+      const currentSubsystem = buf.readUInt16LE(subsystemOffset);
+      if (currentSubsystem === 3) {
+        buf.writeUInt16LE(2, subsystemOffset);
+        await fsp.writeFile(outExe, buf);
+        console.log('✨ Patched executable subsystem to Windows GUI (no console window).');
+      }
+    } catch (patchErr) {
+      console.warn('⚠️ Could not patch PE subsystem:', patchErr.message);
+    }
+  }
+
   const stats = await fsp.stat(outExe);
-  console.log(`✅ Successfully built standalone Windows executable: ${outExe} (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
+  console.log(`✅ Successfully built standalone Windows GUI app: ${outExe} (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
 }
 
 main().catch((err) => {
