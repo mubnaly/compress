@@ -156,16 +156,16 @@
 </script>
 
 <svelte:head>
-  <title>{titles[app.view].title} · Plico</title>
+  <title>{titles[app.view].title} · Rasheeq | رَشيق</title>
 </svelte:head>
 
 <div class="app-shell">
   <aside class="sidebar">
     <div class="brand">
-      <div class="brand-mark">P</div>
+      <img src="/logo.png" alt="Rasheeq Logo" class="brand-logo" style="width:36px;height:36px;border-radius:8px;object-fit:cover" />
       <div>
-        <div class="brand-name">Plico</div>
-        <div class="brand-sub">Local compressor</div>
+        <div class="brand-name">Rasheeq <span style="font-size:12px;opacity:0.8">رَشيق</span></div>
+        <div class="brand-sub">Offline compressor</div>
       </div>
     </div>
 
@@ -229,7 +229,7 @@
             <div class="row wrap" style="gap:8px">
               <a
                 class="btn btn-sm btn-primary"
-                href="https://github.com/mubnaly/compress/releases/latest"
+                href="https://github.com/mubnaly/rasheeq/releases/latest"
                 target="_blank"
                 rel="noreferrer"
               >
@@ -237,7 +237,7 @@
               </a>
               <a
                 class="btn btn-sm btn-primary"
-                href="https://github.com/mubnaly/compress/releases/latest"
+                href="https://github.com/mubnaly/rasheeq/releases/latest"
                 target="_blank"
                 rel="noreferrer"
               >
@@ -250,7 +250,7 @@
           </div>
           <p class="tiny muted" style="margin:0;line-height:1.5">
             You are browsing the static web interface on GitHub Pages. To encode videos or download YouTube streams:
-            run the backend locally with <span class="mono">docker run -d -p 7317:7317 ghcr.io/mubnaly/compress</span>, or connect below:
+            run the backend locally with <span class="mono">docker run -d -p 7317:7317 ghcr.io/mubnaly/rasheeq</span>, or connect below:
           </p>
           <div class="row wrap" style="gap:8px">
             <input

@@ -63,9 +63,11 @@ async function main() {
 
   // 5. Copy output APK
   const outputApk = path.join(ANDROID_DIR, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
-  const targetApk = path.join(DIST_NATIVE, 'Plico-Video-Compressor.apk');
+  const targetApk = path.join(DIST_NATIVE, 'Rasheeq.apk');
+  const legacyApk = path.join(DIST_NATIVE, 'Plico-Video-Compressor.apk');
   if (fs.existsSync(outputApk)) {
     await fsp.copyFile(outputApk, targetApk);
+    await fsp.copyFile(outputApk, legacyApk);
     const stats = await fsp.stat(targetApk);
     console.log(`✅ Successfully built Android APK: ${targetApk} (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
   } else {

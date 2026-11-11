@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Plico Video Compressor</string>
-    <string name="title_activity_main">Plico Video Compressor</string>
-    <string name="package_name">com.plico.compressor</string>
-    <string name="custom_url_scheme">com.plico.compressor</string>
+    <string name="app_name">Rasheeq</string>
+    <string name="title_activity_main">Rasheeq</string>
+    <string name="package_name">com.rasheeq.compressor</string>
+    <string name="custom_url_scheme">com.rasheeq.compressor</string>
 </resources>

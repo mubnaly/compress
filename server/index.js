@@ -689,7 +689,7 @@ async function start() {
 
   server.listen(PORT, HOST, async () => {
     const engine = await detectEngine();
-    console.log(`Plico engine listening on http://${HOST}:${PORT}`);
+    console.log(`Rasheeq (رَشيق) engine listening on http://${HOST}:${PORT}`);
     if (!engine.ok) {
       console.error(`FFmpeg unavailable: ${engine.error}`);
     } else {

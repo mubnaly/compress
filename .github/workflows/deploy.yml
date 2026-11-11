@@ -170,31 +170,34 @@ jobs:
       - name: Copy & Rename APK
         run: |
           mkdir -p artifacts
+          cp android/app/build/outputs/apk/debug/app-debug.apk artifacts/Rasheeq.apk
           cp android/app/build/outputs/apk/debug/app-debug.apk artifacts/Plico-Video-Compressor.apk
 
       - name: Upload APK to Actions Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Plico-Video-Compressor-APK
-          path: artifacts/Plico-Video-Compressor.apk
+          name: Rasheeq-APK
+          path: artifacts/Rasheeq.apk
           retention-days: 30
 
       - name: Create / Update GitHub Release with APK
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.1.0-release
-          name: Plico Video Compressor v0.1.0
+          name: Rasheeq v0.1.0 (رَشيق)
           body: |
-            ### 🎬 Plico Video Compressor v0.1.0
+            ### 🎬 Rasheeq v0.1.0 (رَشيق)
 
             A 100% offline, privacy-first local video compressor with Svelte 5 UI and managed FFmpeg engine.
 
             #### 📦 Downloads:
-            - **Android APK**: [`Plico-Video-Compressor.apk`](https://github.com/mubnaly/compress/releases/download/v0.1.0-release/Plico-Video-Compressor.apk)
-            - **Windows Standalone App**: [`Plico-Video-Compressor.exe`](https://github.com/mubnaly/compress/releases/download/v0.1.0-release/Plico-Video-Compressor.exe)
-            - **Web UI (Static)**: [https://mubnaly.github.io/compress/](https://mubnaly.github.io/compress/)
-            - **Docker Engine**: `docker run -d -p 7317:7317 ghcr.io/mubnaly/compress:latest`
-          files: artifacts/Plico-Video-Compressor.apk
+            - **Android APK**: [`Rasheeq.apk`](https://github.com/mubnaly/rasheeq/releases/download/v0.1.0-release/Rasheeq.apk)
+            - **Windows Standalone App**: [`Rasheeq.exe`](https://github.com/mubnaly/rasheeq/releases/download/v0.1.0-release/Rasheeq.exe)
+            - **Web UI (Static)**: [https://mubnaly.github.io/rasheeq/](https://mubnaly.github.io/rasheeq/)
+            - **Docker Engine**: `docker run -d -p 7317:7317 ghcr.io/${{ github.repository }}:latest`
+          files: |
+            artifacts/Rasheeq.apk
+            artifacts/Plico-Video-Compressor.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -221,15 +224,17 @@ jobs:
       - name: Upload EXE to Actions Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Plico-Video-Compressor-EXE
-          path: dist-native/Plico-Video-Compressor.exe
+          name: Rasheeq-EXE
+          path: dist-native/Rasheeq.exe
           retention-days: 30
 
       - name: Add Windows EXE to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.1.0-release
-          name: Plico Video Compressor v0.1.0
-          files: dist-native/Plico-Video-Compressor.exe
+          name: Rasheeq v0.1.0 (رَشيق)
+          files: |
+            dist-native/Rasheeq.exe
+            dist-native/Plico-Video-Compressor.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,6 +1,6 @@
 {
-  "appId": "com.plico.compressor",
-  "appName": "Plico Video Compressor",
+  "appId": "com.rasheeq.compressor",
+  "appName": "Rasheeq",
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {

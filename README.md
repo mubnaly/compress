@@ -1,13 +1,17 @@
-# Plico — Offline Video Compressor & Online 720p YouTube Engine
+# Rasheeq (رَشيق) — Offline Video Compressor & Online 720p YouTube Engine
 
-[![Build, Test & Deploy](https://github.com/mubnaly/compress/actions/workflows/deploy.yml/badge.svg)](https://github.com/mubnaly/compress/actions/workflows/deploy.yml)
+[![Build, Test & Deploy](https://github.com/mubnaly/rasheeq/actions/workflows/deploy.yml/badge.svg)](https://github.com/mubnaly/rasheeq/actions/workflows/deploy.yml)
+
+<p align="center">
+  <img src="public/logo.png" width="128" height="128" alt="Rasheeq Logo" style="border-radius:24px" />
+</p>
 
 A modern, fast video compressor with 100% offline local processing, drag-and-drop file ingestion, audio completion chime, last-modified queue sorting, and an online **720p YouTube download & compression engine**.
 
-🌐 **Live Web UI**: [https://mubnaly.github.io/compress/](https://mubnaly.github.io/compress/)  
-💻 **Windows App (.exe)**: [Download Standalone Windows EXE](https://github.com/mubnaly/compress/releases)  
-📱 **Android App (.apk)**: [Download Android APK](https://github.com/mubnaly/compress/releases)  
-🐳 **Pre-built Container**: `docker run -d -p 7317:7317 -v ./data:/app/data ghcr.io/mubnaly/compress:latest`
+🌐 **Live Web UI**: [https://mubnaly.github.io/rasheeq/](https://mubnaly.github.io/rasheeq/)  
+💻 **Windows App (.exe)**: [Download Standalone Windows EXE](https://github.com/mubnaly/rasheeq/releases)  
+📱 **Android App (.apk)**: [Download Android APK](https://github.com/mubnaly/rasheeq/releases)  
+🐳 **Pre-built Container**: `docker run -d -p 7317:7317 -v ./data:/app/data ghcr.io/mubnaly/rasheeq:latest`
 
 Media is encoded directly using FFmpeg with hardware acceleration (NVENC, QSV, AMF, VideoToolbox) when available. Nothing is sent to third parties, and there are zero ads or telemetry.
 
@@ -16,13 +20,13 @@ Media is encoded directly using FFmpeg with hardware acceleration (NVENC, QSV, A
 ## ⚡ Quick Start & App Downloads
 
 ### 1. Run Standalone Desktop Executable (.exe) or Android APK
-Download the compiled binaries from the [GitHub Releases page](https://github.com/mubnaly/compress/releases):
-- **Windows**: Run `Plico-Video-Compressor.exe` (no installation or Node.js required).
-- **Android**: Install `Plico-Video-Compressor.apk` on your Android device.
+Download the compiled binaries from the [GitHub Releases page](https://github.com/mubnaly/rasheeq/releases):
+- **Windows**: Run `Rasheeq.exe` (no installation or Node.js required).
+- **Android**: Install `Rasheeq.apk` on your Android device.
 
 ### 2. Run Pre-built Docker Container (Zero Setup)
 ```bash
-docker run -d -p 7317:7317 -v $(pwd)/data:/app/data ghcr.io/mubnaly/compress:latest
+docker run -d -p 7317:7317 -v $(pwd)/data:/app/data ghcr.io/mubnaly/rasheeq:latest
 ```
 Open [http://localhost:7317](http://localhost:7317) in your browser. All dependencies (Node.js 20, FFmpeg, FFprobe, yt-dlp) are bundled inside.
 
@@ -34,10 +38,18 @@ npm install
 # Run development server (engine on :7317 + Vite on :5180)
 npm run dev
 
+# Generate icons from logo.png
+npm run icons
+
 # Build standalone Windows .exe
 npm run build:exe
 
 # Build Android .apk
+npm run build:apk
+
+# Or build everything
+npm run build:all
+```
 npm run build:apk
 
 # Or start production server on :7317
