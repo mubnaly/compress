@@ -15,3 +15,10 @@ data/test-inputs/*.avi
 .DS_Store
 .env.local
 .gemini/
+dist-native/
+dist-server/
+sea-config.json
+sea-prep.blob
+*.blob
+android/app/build/
+android/.gradle/

@@ -7,6 +7,9 @@
   "scripts": {
     "dev": "node scripts/dev.js",
     "build": "vite build",
+    "build:exe": "node scripts/build-exe.mjs",
+    "build:apk": "node scripts/build-apk.mjs",
+    "build:all": "npm run build && npm run build:exe && npm run build:apk",
     "start": "node server/index.js",
     "server": "node server/index.js"
   },

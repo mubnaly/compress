@@ -3,7 +3,9 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const ROOT = typeof __dirname !== 'undefined'
+  ? path.resolve(__dirname, '../..')
+  : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 export const DATA_DIR = process.env.PLICO_DATA_DIR
   ? path.resolve(process.env.PLICO_DATA_DIR)

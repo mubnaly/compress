@@ -71,6 +71,24 @@
 
   onMount(() => {
     (async () => {
+      // Auto-detect local engine if running on GitHub Pages / remote web host
+      if (
+        !getEngineUrl() &&
+        typeof window !== 'undefined' &&
+        window.location.hostname !== 'localhost' &&
+        window.location.hostname !== '127.0.0.1'
+      ) {
+        try {
+          const probe = await fetch('http://127.0.0.1:7317/api/health', { signal: AbortSignal.timeout(1200) });
+          if (probe.ok) {
+            setEngineUrl('http://127.0.0.1:7317');
+            remoteEngineInput = 'http://127.0.0.1:7317';
+          }
+        } catch {
+          // Local engine not running
+        }
+      }
+
       try {
         const health = await api.health();
         app.engine = health.engine;
@@ -80,6 +98,7 @@
         app.jobs = health.queue;
         app.applyTheme(health.settings.theme);
         if (!health.engine.ok) app.bootError = health.engine.error ?? 'FFmpeg is not available on this machine.';
+        else app.bootError = null;
       } catch (err) {
         app.presets = [
           { id: 'optimal', label: 'Optimal quality', badge: 'Recommended', summary: 'CRF rate control at native resolution.' },
@@ -191,14 +210,22 @@
             <span style="font-weight:600;display:flex;align-items:center;gap:6px">
               🌐 Web Preview Mode (Engine Not Connected)
             </span>
-            <div class="row" style="gap:8px">
+            <div class="row wrap" style="gap:8px">
               <a
                 class="btn btn-sm btn-primary"
-                href="https://github.com/mubnaly/compress/releases"
+                href="https://github.com/mubnaly/compress/releases/latest"
                 target="_blank"
                 rel="noreferrer"
               >
-                📱 Download Android APK
+                💻 Download Windows (.exe)
+              </a>
+              <a
+                class="btn btn-sm btn-primary"
+                href="https://github.com/mubnaly/compress/releases/latest"
+                target="_blank"
+                rel="noreferrer"
+              >
+                📱 Download Android (.apk)
               </a>
               <button class="btn btn-sm btn-ghost" onclick={() => (app.view = 'settings')}>
                 ⚙ Engine Settings

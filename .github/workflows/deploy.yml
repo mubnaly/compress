@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
   packages: write
@@ -139,11 +139,16 @@ jobs:
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Android SDK Build-Tools 36
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Install dependencies
         run: npm ci
@@ -177,16 +182,54 @@ jobs:
       - name: Create / Update GitHub Release with APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.0-apk
-          name: Plico Video Compressor v0.1.0 (Android APK)
+          tag_name: v0.1.0-release
+          name: Plico Video Compressor v0.1.0
           body: |
-            ### 📱 Plico Video Compressor - Android Release
+            ### 🎬 Plico Video Compressor v0.1.0
 
-            Install the APK directly on Android devices.
+            A 100% offline, privacy-first local video compressor with Svelte 5 UI and managed FFmpeg engine.
 
-            - **Download**: [`Plico-Video-Compressor.apk`](https://github.com/mubnaly/compress/releases/download/v0.1.0-apk/Plico-Video-Compressor.apk)
-            - **Web UI**: [https://mubnaly.github.io/compress/](https://mubnaly.github.io/compress/)
-            - **Docker**: `docker run -d -p 7317:7317 ghcr.io/mubnaly/compress:latest`
+            #### 📦 Downloads:
+            - **Android APK**: [`Plico-Video-Compressor.apk`](https://github.com/mubnaly/compress/releases/download/v0.1.0-release/Plico-Video-Compressor.apk)
+            - **Windows Standalone App**: [`Plico-Video-Compressor.exe`](https://github.com/mubnaly/compress/releases/download/v0.1.0-release/Plico-Video-Compressor.exe)
+            - **Web UI (Static)**: [https://mubnaly.github.io/compress/](https://mubnaly.github.io/compress/)
+            - **Docker Engine**: `docker run -d -p 7317:7317 ghcr.io/mubnaly/compress:latest`
           files: artifacts/Plico-Video-Compressor.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-exe:
+    name: Build & Release Windows EXE
+    needs: build-and-test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows Executable
+        run: npm run build:exe
+
+      - name: Upload EXE to Actions Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Plico-Video-Compressor-EXE
+          path: dist-native/Plico-Video-Compressor.exe
+          retention-days: 30
+
+      - name: Add Windows EXE to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.0-release
+          name: Plico Video Compressor v0.1.0
+          files: dist-native/Plico-Video-Compressor.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

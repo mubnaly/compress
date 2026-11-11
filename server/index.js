@@ -11,7 +11,9 @@ import { CompressionQueue, isVideoPath } from './lib/queue.js';
 import { Store, defaultRoots, DATA_DIR } from './lib/store.js';
 import { generatePreview, generateThumbnail, cleanPreviews } from './lib/preview.js';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = typeof __dirname !== 'undefined'
+  ? path.resolve(__dirname, '..')
+  : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST_DIR = path.join(ROOT, 'dist');
 const PORT = Number(process.env.PORT ?? process.env.PLICO_PORT ?? 7317);
 const HOST = process.env.PLICO_HOST ?? '0.0.0.0';
@@ -38,8 +40,7 @@ const MIME = {
 };
 
 const store = new Store();
-await store.ready;
-const queue = new CompressionQueue({ store, getEngine: () => detectEngine() });
+let queue = null;
 
 function sendJson(res, status, payload) {
   const body = JSON.stringify(payload);
@@ -607,19 +608,25 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-await cleanPreviews();
+async function start() {
+  await store.ready;
+  queue = new CompressionQueue({ store, getEngine: () => detectEngine() });
+  await cleanPreviews();
 
-server.listen(PORT, HOST, async () => {
-  const engine = await detectEngine();
-  console.log(`Plico engine listening on http://${HOST}:${PORT}`);
-  if (!engine.ok) {
-    console.error(`FFmpeg unavailable: ${engine.error}`);
-  } else {
-    const hardware = Object.entries(engine.hardwareEncoders)
-      .filter(([, list]) => list.length)
-      .map(([codec, list]) => `${codec}:${list[0]}`);
-    console.log(`FFmpeg ${engine.version}`);
-    console.log(`Software encoders: ${Object.entries(engine.softwareEncoders).map(([k, v]) => `${k}=${v ?? 'n/a'}`).join(', ')}`);
-    console.log(`Hardware encoders: ${hardware.length ? hardware.join(', ') : 'none detected'}`);
-  }
-});
+  server.listen(PORT, HOST, async () => {
+    const engine = await detectEngine();
+    console.log(`Plico engine listening on http://${HOST}:${PORT}`);
+    if (!engine.ok) {
+      console.error(`FFmpeg unavailable: ${engine.error}`);
+    } else {
+      const hardware = Object.entries(engine.hardwareEncoders)
+        .filter(([, list]) => list.length)
+        .map(([codec, list]) => `${codec}:${list[0]}`);
+      console.log(`FFmpeg ${engine.version}`);
+      console.log(`Software encoders: ${Object.entries(engine.softwareEncoders).map(([k, v]) => `${k}=${v ?? 'n/a'}`).join(', ')}`);
+      console.log(`Hardware encoders: ${hardware.length ? hardware.join(', ') : 'none detected'}`);
+    }
+  });
+}
+
+start();

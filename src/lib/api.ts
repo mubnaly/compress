@@ -185,6 +185,124 @@ export function setEngineUrl(url: string) {
   }
 }
 
+export async function probeBrowserVideo(url: string, name = 'Selected Video', size = 0): Promise<{ probe: Probe }> {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    const timer = setTimeout(() => {
+      done(1920, 1080, 10);
+    }, 4000);
+
+    function done(w: number, h: number, dur: number) {
+      clearTimeout(timer);
+      const safeDuration = Math.max(0.1, Number.isFinite(dur) ? dur : 10);
+      const safeWidth = w || 1920;
+      const safeHeight = h || 1080;
+      const safeSize = size || Math.round(safeDuration * 2 * 1024 * 1024);
+      const bitrate = Math.round((safeSize * 8) / (safeDuration * 1000));
+
+      resolve({
+        probe: {
+          path: url,
+          fileName: name,
+          directory: 'Browser Memory',
+          fileSizeBytes: safeSize,
+          durationSeconds: Math.round(safeDuration * 10) / 10,
+          formatName: 'mp4',
+          totalBitrateKbps: bitrate,
+          rotation: 0,
+          isHdr: false,
+          bitsPerPixel: 0.08,
+          alreadyOptimal: { likely: false, reason: null },
+          video: {
+            codec: 'h264',
+            codecLong: 'H.264 / AVC (Web Browser)',
+            profile: 'High',
+            width: safeWidth,
+            height: safeHeight,
+            displayWidth: safeWidth,
+            displayHeight: safeHeight,
+            fps: 30,
+            bitrateKbps: Math.max(80, bitrate - 128),
+            pixelFormat: 'yuv420p',
+          },
+          audio: {
+            codec: 'aac',
+            channels: 2,
+            channelLayout: 'stereo',
+            sampleRate: 48000,
+            bitrateKbps: 128,
+          },
+        },
+      });
+    }
+
+    video.onloadedmetadata = () => {
+      done(video.videoWidth, video.videoHeight, video.duration);
+    };
+    video.onerror = () => {
+      done(1920, 1080, 10);
+    };
+    video.src = url;
+  });
+}
+
+function calculateFallbackEstimate(probe: Probe, preset: string, options: Record<string, unknown>): Estimate {
+  const duration = probe.durationSeconds || 10;
+  const originalSize = probe.fileSizeBytes || 20 * 1024 * 1024;
+  let targetBytes = originalSize * 0.5;
+
+  let width = probe.video.displayWidth;
+  let height = probe.video.displayHeight;
+
+  if (preset === 'optimal') {
+    targetBytes = originalSize * 0.65;
+  } else if (preset === 'medium') {
+    targetBytes = originalSize * 0.45;
+    if (height > 720) {
+      width = Math.round((width * (720 / height)) / 2) * 2;
+      height = 720;
+    }
+  } else if (preset === 'small') {
+    targetBytes = originalSize * 0.28;
+    if (height > 480) {
+      width = Math.round((width * (480 / height)) / 2) * 2;
+      height = 480;
+    }
+  } else if (preset === 'whatsapp') {
+    targetBytes = Math.min(originalSize, 16 * 1024 * 1024 * 0.95);
+  } else if (preset === 'gmail') {
+    targetBytes = Math.min(originalSize, 25 * 1024 * 1024 * 0.95);
+  } else if (preset === 'custom_size') {
+    const mb = Number(options.targetSizeMB) || 25;
+    targetBytes = mb * 1024 * 1024;
+  }
+
+  const reduction = Math.max(0, Math.round(((originalSize - targetBytes) / originalSize) * 100));
+  const audioKbps = options.removeAudio ? 0 : 128;
+  const totalKbps = Math.round((targetBytes * 8) / (duration * 1000));
+  const videoKbps = Math.max(80, totalKbps - audioKbps);
+
+  return {
+    ok: true,
+    preset,
+    codec: String(options.codec || 'h264'),
+    codecLabel: String(options.codec || 'h264').toUpperCase(),
+    mode: preset === 'optimal' ? 'crf' : 'bitrate',
+    durationSeconds: duration,
+    width,
+    height,
+    videoBitrateKbps: videoKbps,
+    audioBitrateKbps: audioKbps,
+    totalBitrateKbps: totalKbps,
+    outputSizeBytes: Math.round(targetBytes),
+    originalSizeBytes: originalSize,
+    reductionPercent: reduction,
+    targetSizeBytes: targetBytes,
+    warnings: [],
+  };
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const base = getEngineUrl();
   const target = base ? `${base}${url}` : url;
@@ -204,6 +322,11 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
+    if (response.status === 405) {
+      throw new Error(
+        'Backend engine is required. Please run Plico-Video-Compressor.exe or connect to http://localhost:7317.'
+      );
+    }
     const message =
       payload && typeof payload === 'object' && 'error' in payload
         ? String((payload as { error: unknown }).error)
@@ -225,13 +348,35 @@ export const api = {
       `/api/browse?path=${encodeURIComponent(path ?? '')}&sort=${encodeURIComponent(sort)}&dir=${direction}`,
     ),
 
-  probe: (path: string) => request<{ probe: Probe }>('/api/probe', { method: 'POST', body: JSON.stringify({ path }) }),
+  probe: async (path: string): Promise<{ probe: Probe }> => {
+    if (path.startsWith('blob:') || path.startsWith('data:')) {
+      return probeBrowserVideo(path);
+    }
+    return request<{ probe: Probe }>('/api/probe', { method: 'POST', body: JSON.stringify({ path }) });
+  },
 
-  estimate: (payload: { path?: string; probe?: Probe; preset: string; options: Record<string, unknown> }) =>
-    request<{ probe: Probe; estimate: Estimate }>('/api/estimate', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
+  estimate: async (payload: { path?: string; probe?: Probe; preset: string; options: Record<string, unknown> }): Promise<{ probe: Probe; estimate: Estimate }> => {
+    if (payload.path?.startsWith('blob:') && payload.probe) {
+      return {
+        probe: payload.probe,
+        estimate: calculateFallbackEstimate(payload.probe, payload.preset, payload.options),
+      };
+    }
+    try {
+      return await request<{ probe: Probe; estimate: Estimate }>('/api/estimate', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      if (payload.probe) {
+        return {
+          probe: payload.probe,
+          estimate: calculateFallbackEstimate(payload.probe, payload.preset, payload.options),
+        };
+      }
+      throw err;
+    }
+  },
 
   addJobs: (items: { path: string; preset: string; options: Record<string, unknown> }[]) =>
     request<{ jobs: Job[] }>('/api/jobs', { method: 'POST', body: JSON.stringify({ items }) }),
@@ -265,13 +410,32 @@ export const api = {
 
   upload: async (file: File): Promise<{ ok: boolean; file: BrowseEntry; probe: Probe }> => {
     const base = getEngineUrl();
-    const res = await fetch(`${base}/api/upload?name=${encodeURIComponent(file.name)}`, {
+    if (!base && typeof window !== 'undefined' && window.location.hostname.endsWith('github.io')) {
+      throw new Error(
+        'Cannot upload to GitHub Pages static host. Please connect to your local Plico engine at http://localhost:7317 or run Plico-Video-Compressor.exe.'
+      );
+    }
+    const target = base ? `${base}/api/upload?name=${encodeURIComponent(file.name)}` : `/api/upload?name=${encodeURIComponent(file.name)}`;
+    const res = await fetch(target, {
       method: 'POST',
       body: file,
     });
     if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Upload failed: ${err}`);
+      if (res.status === 405) {
+        throw new Error(
+          'Backend engine required: static web host does not support direct video upload. Run Plico-Video-Compressor.exe or connect to http://localhost:7317.'
+        );
+      }
+      let err = '';
+      try {
+        err = await res.text();
+      } catch {
+        err = `${res.status} ${res.statusText}`;
+      }
+      if (err.includes('<html') || err.includes('<!DOCTYPE')) {
+        throw new Error(`Engine not reachable (status ${res.status}). Connect to http://localhost:7317.`);
+      }
+      throw new Error(`Upload failed: ${err.slice(0, 150)}`);
     }
     return res.json();
   },
@@ -289,7 +453,18 @@ export const api = {
   history: () => request<HistoryResponse & { ok: boolean }>('/api/history'),
   clearHistory: () => request<{ ok: boolean }>('/api/history', { method: 'DELETE' }),
 
-  mediaUrl: (path: string) => `${getEngineUrl()}/api/media?path=${encodeURIComponent(path)}`,
-  thumbUrl: (path: string, timeSeconds = 1) =>
-    `${getEngineUrl()}/api/thumb?path=${encodeURIComponent(path)}&t=${encodeURIComponent(String(timeSeconds))}`,
+  mediaUrl: (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('blob:') || path.startsWith('data:') || path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    return `${getEngineUrl()}/api/media?path=${encodeURIComponent(path)}`;
+  },
+  thumbUrl: (path: string, timeSeconds = 1) => {
+    if (!path) return '';
+    if (path.startsWith('blob:') || path.startsWith('data:') || path.startsWith('http://') || path.startsWith('https://')) {
+      return '';
+    }
+    return `${getEngineUrl()}/api/thumb?path=${encodeURIComponent(path)}&t=${encodeURIComponent(String(timeSeconds))}`;
+  },
 };

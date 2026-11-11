@@ -5,22 +5,28 @@
 A modern, fast video compressor with 100% offline local processing, drag-and-drop file ingestion, audio completion chime, last-modified queue sorting, and an online **720p YouTube download & compression engine**.
 
 🌐 **Live Web UI**: [https://mubnaly.github.io/compress/](https://mubnaly.github.io/compress/)  
-📱 **Android APK**: [Download APK from GitHub Releases](https://github.com/mubnaly/compress/releases)  
+💻 **Windows App (.exe)**: [Download Standalone Windows EXE](https://github.com/mubnaly/compress/releases)  
+📱 **Android App (.apk)**: [Download Android APK](https://github.com/mubnaly/compress/releases)  
 🐳 **Pre-built Container**: `docker run -d -p 7317:7317 -v ./data:/app/data ghcr.io/mubnaly/compress:latest`
 
 Media is encoded directly using FFmpeg with hardware acceleration (NVENC, QSV, AMF, VideoToolbox) when available. Nothing is sent to third parties, and there are zero ads or telemetry.
 
 ---
 
-## ⚡ Quick Start
+## ⚡ Quick Start & App Downloads
 
-### 1. Run Pre-built Docker Container (Zero Setup)
+### 1. Run Standalone Desktop Executable (.exe) or Android APK
+Download the compiled binaries from the [GitHub Releases page](https://github.com/mubnaly/compress/releases):
+- **Windows**: Run `Plico-Video-Compressor.exe` (no installation or Node.js required).
+- **Android**: Install `Plico-Video-Compressor.apk` on your Android device.
+
+### 2. Run Pre-built Docker Container (Zero Setup)
 ```bash
 docker run -d -p 7317:7317 -v $(pwd)/data:/app/data ghcr.io/mubnaly/compress:latest
 ```
 Open [http://localhost:7317](http://localhost:7317) in your browser. All dependencies (Node.js 20, FFmpeg, FFprobe, yt-dlp) are bundled inside.
 
-### 2. Run Locally with Node.js
+### 3. Build & Run Locally from Source
 ```bash
 # Install dependencies
 npm install
@@ -28,7 +34,13 @@ npm install
 # Run development server (engine on :7317 + Vite on :5180)
 npm run dev
 
-# Or build and start production server on :7317
+# Build standalone Windows .exe
+npm run build:exe
+
+# Build Android .apk
+npm run build:apk
+
+# Or start production server on :7317
 npm run build
 npm start
 ```

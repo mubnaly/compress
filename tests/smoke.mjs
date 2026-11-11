@@ -1,5 +1,7 @@
 // End-to-end smoke test against the running Plico engine on 127.0.0.1:7317.
 // Usage: node data/smoke-test.mjs <input-video>
+import path from 'node:path';
+
 const BASE = 'http://127.0.0.1:7317';
 const input = process.argv[2];
 
@@ -58,9 +60,10 @@ check('engine detected', health.engine.ok, health.engine.version ?? health.engin
 check('libx264 available', health.engine.softwareEncoders.h264 === 'libx264', String(health.engine.softwareEncoders.h264));
 check('preset catalogue served', health.presets.length === 7, `${health.presets.length} presets`);
 
-const listing = await call(`/api/browse?path=${encodeURIComponent(process.env.PLICO_TEST_DIR ?? '.')}`);
+const browseDir = process.env.PLICO_TEST_DIR ?? (input ? path.dirname(path.resolve(input)) : '.');
+const listing = await call(`/api/browse?path=${encodeURIComponent(browseDir)}`);
 check('browse lists directories', Array.isArray(listing.directories), `${listing.directories.length} dirs`);
-const normalize = (value) => value.replaceAll('\\', '/').toLowerCase();
+const normalize = (value) => path.resolve(value).replaceAll('\\', '/').toLowerCase();
 check('browse lists videos', listing.videos.some((video) => normalize(video.path) === normalize(input)), `${listing.videos.length} videos`);
 
 const { probe } = await post('/api/probe', { path: input });

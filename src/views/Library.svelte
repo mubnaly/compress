@@ -75,10 +75,28 @@
             modifiedAt: file.lastModified,
           });
         } else {
-          // Stream upload to local engine directly
-          const res = await api.upload(file);
-          if (res.ok && res.file) {
-            addedEntries.push(res.file);
+          // Attempt upload to local engine temp
+          let uploaded = false;
+          try {
+            const res = await api.upload(file);
+            if (res.ok && res.file) {
+              addedEntries.push(res.file);
+              uploaded = true;
+            }
+          } catch (uploadErr) {
+            console.warn('Backend upload skipped or not available on static host:', uploadErr);
+          }
+
+          if (!uploaded) {
+            // Create in-browser blob preview URL so the user can inspect and configure
+            const blobUrl = URL.createObjectURL(file);
+            addedEntries.push({
+              name: file.name,
+              path: blobUrl,
+              sizeBytes: file.size,
+              modifiedAt: file.lastModified,
+            });
+            app.notify('Loaded video into browser preview! (Connect local engine to encode)', 'info');
           }
         }
       }
@@ -114,7 +132,11 @@
       listing = data;
       pathInput = data.path;
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Could not open that folder';
+      if (app.bootError === 'offline') {
+        error = null;
+      } else {
+        error = err instanceof Error ? err.message : 'Could not open that folder';
+      }
     } finally {
       loading = false;
     }
@@ -344,6 +366,10 @@
 
 {#if error}
   <div class="notice danger" style="margin-bottom:14px">{error}</div>
+{:else if app.bootError === 'offline' && (!listing || !listing.videos.length)}
+  <div class="notice" style="margin-bottom:14px;background:var(--panel-2);border-color:var(--border)">
+    💡 <strong>Web Mode:</strong> File browsing is supported in the desktop app. Drop or select any video file directly above to test!
+  </div>
 {/if}
 
 <div class="browser">
