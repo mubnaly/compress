@@ -196,8 +196,30 @@ function revealInFileManager(target) {
   spawn('xdg-open', [path.dirname(path.resolve(target))], { detached: true, stdio: 'ignore' }).unref();
 }
 
+let lastActivity = Date.now();
+let hasEverConnected = false;
+
+// If in desktop app mode, auto-terminate when the window is closed and no heartbeats arrive for 15s
+setInterval(() => {
+  if (hasEverConnected && Date.now() - lastActivity > 15000) {
+    process.exit(0);
+  }
+}, 5000);
+
 async function handleApi(req, res, url) {
   const pathname = url.pathname;
+
+  if (pathname === '/api/heartbeat') {
+    hasEverConnected = true;
+    lastActivity = Date.now();
+    return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === '/api/shutdown') {
+    sendJson(res, 200, { ok: true });
+    setTimeout(() => process.exit(0), 100);
+    return;
+  }
 
   if (pathname === '/api/health' && req.method === 'GET') {
     const engine = await detectEngine();
@@ -646,12 +668,9 @@ function openAppWindow(port) {
         '--disable-default-apps',
         `--user-data-dir=${profileDir}`,
       ],
-      { detached: false, windowsHide: true }
+      { detached: true, windowsHide: true, stdio: 'ignore' }
     );
-
-    appProc.on('exit', () => {
-      process.exit(0);
-    });
+    appProc.unref();
   } else {
     if (process.platform === 'win32') {
       spawn('cmd', ['/c', 'start', url], { windowsHide: true, detached: true }).unref();

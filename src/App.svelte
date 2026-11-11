@@ -124,9 +124,25 @@
     bootTimer = setInterval(() => app.refreshJobs(), 900);
     window.addEventListener('keydown', handleShortcut);
 
+    // Desktop heartbeat and clean shutdown on window close
+    const pingHeartbeat = () => {
+      fetch('/api/heartbeat').catch(() => {});
+    };
+    pingHeartbeat();
+    const heartbeatTimer = setInterval(pingHeartbeat, 3000);
+
+    const onBeforeUnload = () => {
+      try {
+        navigator.sendBeacon('/api/shutdown');
+      } catch {}
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+
     return () => {
       if (bootTimer) clearInterval(bootTimer);
+      clearInterval(heartbeatTimer);
       window.removeEventListener('keydown', handleShortcut);
+      window.removeEventListener('beforeunload', onBeforeUnload);
     };
   });
 
