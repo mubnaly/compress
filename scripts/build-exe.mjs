@@ -20,9 +20,10 @@ async function main() {
 
   // 2. Bundle backend into single CommonJS file
   console.log('📦 Bundling backend with esbuild...');
-  execSync('npx --yes esbuild server/index.js --bundle --platform=node --target=node20 --outfile=dist-server/server.cjs --format=cjs', {
-    stdio: 'inherit',
-  });
+  execSync(
+    'npx --yes esbuild server/index.js --bundle --platform=node --target=node20 --outfile=dist-server/server.cjs --format=cjs --define:import.meta.url=\'""\'',
+    { stdio: 'inherit' }
+  );
 
   // 3. Create SEA config
   const seaConfig = {
@@ -36,12 +37,43 @@ async function main() {
   console.log('⚡ Generating Node SEA blob...');
   execSync('node --experimental-sea-config sea-config.json', { stdio: 'inherit' });
 
-  // 5. Copy node binary
+  // 5. Ensure existing executable is not locked by a running instance
   const outExe = path.join(DIST_NATIVE, 'Plico-Video-Compressor.exe');
+  if (process.platform === 'win32') {
+    try {
+      execSync('taskkill /F /IM Plico-Video-Compressor.exe', { stdio: 'ignore' });
+      await new Promise((r) => setTimeout(r, 600));
+    } catch {
+      // Process was not running
+    }
+  }
+
+  if (fs.existsSync(outExe)) {
+    try {
+      await fsp.unlink(outExe);
+    } catch (err) {
+      if (err.code === 'EBUSY') {
+        console.log('⚠️ Target executable is locked by an active process, terminating it...');
+        if (process.platform === 'win32') {
+          try {
+            execSync('taskkill /F /IM Plico-Video-Compressor.exe', { stdio: 'ignore' });
+            await new Promise((r) => setTimeout(r, 1000));
+            await fsp.unlink(outExe);
+          } catch (killErr) {
+            throw new Error(`Cannot overwrite ${outExe} because it is currently running. Please close the app and retry.`);
+          }
+        }
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  // 6. Copy node binary
   console.log(`📋 Copying Node.js binary (${process.execPath}) -> ${outExe}...`);
   await fsp.copyFile(process.execPath, outExe);
 
-  // 6. Inject blob into exe via postject
+  // 7. Inject blob into exe via postject
   console.log('💉 Injecting SEA blob into executable with postject...');
   execSync(
     `npx --yes postject "${outExe}" NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2`,
@@ -53,6 +85,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('❌ Build failed:', err);
+  console.error('❌ Build failed:', err.message || err);
   process.exit(1);
 });
